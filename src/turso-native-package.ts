@@ -7,7 +7,9 @@ export function tursoOptionalNativePackageForHost(
   arch: string = process.arch,
 ): string | undefined {
   if (platform === "darwin") {
-    return arch === "arm64" ? "@tursodatabase/database-darwin-arm64" : "@tursodatabase/database-darwin-x64";
+    return arch === "arm64"
+      ? "@tursodatabase/database-darwin-arm64"
+      : "@tursodatabase/database-darwin-x64";
   }
   if (platform === "linux") {
     return arch === "arm64"
