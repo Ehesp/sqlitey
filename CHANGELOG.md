@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0](https://github.com/Ehesp/sqlitey/compare/sqlitey-v0.3.1...sqlitey-v0.4.0) (2026-04-09)
+
+
+### Features
+
+* switch to @tursodatabase/database and fix standalone release ([7baa06b](https://github.com/Ehesp/sqlitey/commit/7baa06b6aec7783e3e603cef42b39746eea18f57))
+
+
+### Bug Fixes
+
+* filter Turso/sqlite internal names with GLOB not LIKE ([53bb544](https://github.com/Ehesp/sqlitey/commit/53bb54446fdbe6fdc6a873def03f794129e24a7c))
+* **release:** run bun-plugin-tailwind in Bun.build for compiled binaries ([a4c92d2](https://github.com/Ehesp/sqlitey/commit/a4c92d27f8f788f45e7e68046c80bf51edf965ab))
+
 ## [0.3.1](https://github.com/Ehesp/sqlitey/compare/sqlitey-v0.3.0...sqlitey-v0.3.1) (2026-04-09)
 
 
