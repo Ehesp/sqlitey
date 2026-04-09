@@ -66,6 +66,7 @@ try {
         cwd: rootDir,
         stdout: "inherit",
         stderr: "inherit",
+        env: { ...process.env, SQLITEY_TURSO_NATIVE_PACKAGE: tursoPkg },
       },
     );
     await syncProc.exited;
