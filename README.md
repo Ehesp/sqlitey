@@ -35,10 +35,10 @@ Yep. This was mainly built without looking at the code for a fun experiment in C
 
 Prebuilt binaries (from GitHub releases) are published for:
 
-| Platform | Notes |
-| --- | --- |
-| **macOS** (Apple Silicon, `arm64`) | |
-| **Linux** (`x64`, `arm64`) | glibc-based builds |
-| **Windows** (`x64`) | |
+| Platform                           | Notes              |
+| ---------------------------------- | ------------------ |
+| **macOS** (Apple Silicon, `arm64`) |                    |
+| **Linux** (`x64`, `arm64`)         | glibc-based builds |
+| **Windows** (`x64`)                |                    |
 
 **Not available as prebuilds** (no matching Turso `@tursodatabase/database-*` native package for the pinned driver version): Intel macOS (`x64`), Windows on ARM. On those systems you’d need to run from source with Bun if/when upstream adds prebuilds, or use a supported machine.
