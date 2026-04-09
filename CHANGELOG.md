@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/Ehesp/sqlitey/compare/sqlitey-v0.3.0...sqlitey-v0.3.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* **release:** patch libsql dynamic require so bun compile embeds native addon ([e0481eb](https://github.com/Ehesp/sqlitey/commit/e0481eb1f15a3137cdbf7cbfa3daf93152777c87))
+
 ## [0.3.0](https://github.com/Ehesp/sqlitey/compare/sqlitey-v0.2.0...sqlitey-v0.3.0) (2026-04-09)
 
 
