@@ -15,6 +15,7 @@ import {
   DatabaseIcon,
   DownloadIcon,
   LockIcon,
+  PaletteIcon,
   PlayIcon,
   RefreshCwIcon,
   SearchIcon,
@@ -27,7 +28,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from "react-resizable-panels";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Pagination,
   PaginationContent,
@@ -48,7 +50,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { SQL_EDITOR_KEYWORDS } from "@/lib/sql-keywords";
@@ -130,6 +132,12 @@ type QueryResponse = {
   durationMs: number;
 };
 
+type ThemeResponse = {
+  css: string | null;
+};
+
+const THEME_STYLE_ID = "shadcn-presets";
+
 type PaginationToken = number | "left-ellipsis" | "right-ellipsis";
 
 function buildPaginationTokens(currentPage: number, totalPages: number): PaginationToken[] {
@@ -180,6 +188,20 @@ function downloadTextFile(content: string, filename: string, mime: string): void
   URL.revokeObjectURL(objectUrl);
 }
 
+function injectThemeCss(css: string): void {
+  let element = document.getElementById(THEME_STYLE_ID) as HTMLStyleElement | null;
+  if (!element) {
+    element = document.createElement("style");
+    element.id = THEME_STYLE_ID;
+    document.head.appendChild(element);
+  }
+  element.textContent = css;
+}
+
+function clearThemeCss(): void {
+  document.getElementById(THEME_STYLE_ID)?.remove();
+}
+
 export function App() {
   const [meta, setMeta] = useState<MetaResponse | null>(null);
   const [schema, setSchema] = useState<SchemaObject[]>([]);
@@ -203,6 +225,11 @@ export function App() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [querySheetOpen, setQuerySheetOpen] = useState(false);
   const [queryAllowWrite, setQueryAllowWrite] = useState(false);
+  const [themeDialogOpen, setThemeDialogOpen] = useState(false);
+  const [themePreset, setThemePreset] = useState("");
+  const [themeError, setThemeError] = useState<string | null>(null);
+  const [themeSaving, setThemeSaving] = useState(false);
+  const [themeResetting, setThemeResetting] = useState(false);
   const [querySql, setQuerySql] = useState("");
   const [queryResult, setQueryResult] = useState<QueryResponse | null>(null);
   const [queryResultPageIndex, setQueryResultPageIndex] = useState(0);
@@ -303,6 +330,19 @@ export function App() {
   useEffect(() => {
     void refreshSchemaAndMeta();
   }, [refreshSchemaAndMeta]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const payload = await apiGet<ThemeResponse>("/api/theme");
+        if (payload.css) {
+          injectThemeCss(payload.css);
+        }
+      } catch {
+        // Keep app startup resilient if theme persistence is unavailable.
+      }
+    })();
+  }, [apiGet]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -626,6 +666,50 @@ export function App() {
     }
   }, [apiFetch, queryAllowWrite, querySql]);
 
+  const saveThemePreset = useCallback(async () => {
+    const preset = themePreset.trim();
+    if (!preset) {
+      setThemeError("Enter a preset value.");
+      return;
+    }
+
+    setThemeSaving(true);
+    setThemeError(null);
+
+    try {
+      const response = await apiFetch("/api/theme", {
+        method: "POST",
+        body: JSON.stringify({ preset }),
+      });
+      const payload = (await response.json()) as ThemeResponse;
+      if (payload.css) {
+        injectThemeCss(payload.css);
+      }
+      setThemeDialogOpen(false);
+      setThemePreset("");
+    } catch (caughtError) {
+      setThemeError(caughtError instanceof Error ? caughtError.message : String(caughtError));
+    } finally {
+      setThemeSaving(false);
+    }
+  }, [apiFetch, themePreset]);
+
+  const resetThemePreset = useCallback(async () => {
+    setThemeResetting(true);
+    setThemeError(null);
+
+    try {
+      await apiFetch("/api/theme", { method: "DELETE" });
+      clearThemeCss();
+      setThemePreset("");
+      setThemeDialogOpen(false);
+    } catch (caughtError) {
+      setThemeError(caughtError instanceof Error ? caughtError.message : String(caughtError));
+    } finally {
+      setThemeResetting(false);
+    }
+  }, [apiFetch]);
+
   const downloadExport = useCallback(
     async (format: "csv" | "json") => {
       if (!selectedTable) {
@@ -752,6 +836,20 @@ export function App() {
               <Button variant="outline" size="sm" onClick={() => setQuerySheetOpen(true)}>
                 <TerminalSquareIcon data-icon="inline-start" />
                 SQL Workspace
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                className="size-8 shrink-0"
+                title="Theme (shadcn preset)"
+                aria-label="Theme (shadcn preset)"
+                onClick={() => {
+                  setThemeError(null);
+                  setThemeDialogOpen(true);
+                }}
+              >
+                <PaletteIcon className="size-4" />
               </Button>
               <Button
                 type="button"
@@ -1332,11 +1430,83 @@ export function App() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={themeDialogOpen}
+        onOpenChange={open => {
+          setThemeDialogOpen(open);
+          if (!open) {
+            setThemeError(null);
+            setThemeSaving(false);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Theme</DialogTitle>
+            <DialogDescription>Enter preset value</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="theme-preset">Preset</Label>
+              <Input
+                id="theme-preset"
+                value={themePreset}
+                onChange={event => setThemePreset(event.target.value)}
+                placeholder="b3RrIFD3A or --preset b3RrIFD3A"
+                autoComplete="off"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                onKeyDown={event => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void saveThemePreset();
+                  }
+                }}
+              />
+            </div>
+
+            <p className="text-sm text-muted-foreground">
+              Paste the preset token from{" "}
+              <a
+                href="https://ui.shadcn.com/create"
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary underline underline-offset-4"
+              >
+                shadcn create
+              </a>
+              .
+            </p>
+
+            {themeError && (
+              <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                {themeError}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter showCloseButton>
+            <Button variant="ghost" onClick={() => void resetThemePreset()} disabled={themeSaving || themeResetting}>
+              {themeResetting ? "Resetting..." : "Reset"}
+            </Button>
+            <Button onClick={() => void saveThemePreset()} disabled={themeSaving || themeResetting}>
+              {themeSaving ? "Saving..." : "Apply"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {querySheetOpen && (
         <div aria-hidden className="fixed inset-0 z-40 bg-black/50" role="presentation" />
       )}
       <Sheet modal={false} open={querySheetOpen} onOpenChange={setQuerySheetOpen}>
         <SheetContent side="bottom" className="flex h-[72vh] max-w-full flex-col p-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>SQL Workspace</SheetTitle>
+            <SheetDescription>Run SQL queries and inspect the results.</SheetDescription>
+          </SheetHeader>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 pt-12">
             <div
               ref={sqlWorkspaceRowRef}

@@ -7,6 +7,7 @@ A simple (vibe coded) SQLite (including [Turso support](https://docs.turso.tech/
 - Inspect table metadata (indicies, DDL/FKs etc)
 - Export data in JSON or CSV
 - SQL workspace with keyword autocomplete
+- Themeable via [Shadcn presets](https://ui.shadcn.com/create)
 
 ## Usage
 

@@ -1,9 +1,12 @@
 import "./turso-preload";
 import { connect, type Database } from "@tursodatabase/database";
+import { presetToShadcnThemeCss } from "shadcn-presets";
 import { serve } from "bun";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
+import { homedir } from "node:os";
 import path from "node:path";
 import index from "./index.html";
 
@@ -11,6 +14,8 @@ const APP_VERSION = "0.1.0";
 const APP_NAME = "sqlitey";
 const DEFAULT_PORT = 4983;
 const MAX_PAGE_SIZE = 500;
+const THEME_DIRECTORY = path.join(homedir(), ".sqlitey");
+const THEME_CSS_PATH = path.join(THEME_DIRECTORY, "theme.css");
 
 type CliOptions = {
   host: string;
@@ -299,6 +304,34 @@ const server = serve({
           rowsAffected: result.rowsAffected,
           durationMs,
         });
+      }),
+    },
+    "/api/theme": {
+      GET: withApi(async () => {
+        const css = await readPersistedThemeCss();
+        return json({ css });
+      }),
+      POST: withApi(async req => {
+        const body = await parseJsonBody<{ preset?: string }>(req);
+        const preset = normalizeThemePreset(body.preset);
+
+        if (!preset) {
+          return json({ error: "Preset value is required." }, 400);
+        }
+
+        const css = presetToShadcnThemeCss(preset);
+        if (!css) {
+          return json({ error: "Invalid preset value" }, 400);
+        }
+
+        await mkdir(THEME_DIRECTORY, { recursive: true });
+        await writeFile(THEME_CSS_PATH, css, "utf8");
+
+        return json({ css });
+      }),
+      DELETE: withApi(async () => {
+        await deletePersistedThemeCss();
+        return json({ css: null });
       }),
     },
     "/api/export": {
@@ -676,6 +709,33 @@ function openBrowser(url: string) {
     return;
   }
   spawn("xdg-open", [url], { stdio: "ignore", detached: true }).unref();
+}
+
+function normalizeThemePreset(preset: string | undefined): string {
+  return (preset ?? "").trim().replace(/^--preset\s+/i, "").trim();
+}
+
+async function readPersistedThemeCss(): Promise<string | null> {
+  try {
+    const css = await readFile(THEME_CSS_PATH, "utf8");
+    return css.trim() ? css : null;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function deletePersistedThemeCss(): Promise<void> {
+  try {
+    await unlink(THEME_CSS_PATH);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
 }
 
 function json(payload: unknown, status = 200): Response {
