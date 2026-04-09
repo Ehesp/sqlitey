@@ -8,6 +8,7 @@
     "sqlitey": "src/index.ts"
   },
   "scripts": {
+    "postinstall": "bun scripts/write-libsql-embed.ts",
     "dev": "bun --hot src/index.ts --no-open ./app.db",
     "start": "NODE_ENV=production bun src/index.ts --no-open ./app.db",
     "studio": "bun src/index.ts",

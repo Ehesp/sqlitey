@@ -1,3 +1,4 @@
+import "./libsql-native.generated";
 import { createClient, type Row } from "@libsql/client";
 import { serve } from "bun";
 import { spawn } from "node:child_process";
