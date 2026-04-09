@@ -132,24 +132,6 @@ type QueryResponse = {
 
 type PaginationToken = number | "left-ellipsis" | "right-ellipsis";
 
-const TOKEN_STORAGE_KEY = "sqlitey_token";
-
-function readTokenFromBrowser(): string {
-  const url = new URL(window.location.href);
-  const tokenFromQuery = url.searchParams.get("token");
-  const tokenFromStorage = sessionStorage.getItem(TOKEN_STORAGE_KEY);
-
-  if (tokenFromQuery) {
-    sessionStorage.setItem(TOKEN_STORAGE_KEY, tokenFromQuery);
-    url.searchParams.delete("token");
-    const nextSearch = url.search ? `${url.search}` : "";
-    window.history.replaceState({}, "", `${url.pathname}${nextSearch}${url.hash}`);
-    return tokenFromQuery;
-  }
-
-  return tokenFromStorage ?? "";
-}
-
 function buildPaginationTokens(currentPage: number, totalPages: number): PaginationToken[] {
   if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -199,7 +181,6 @@ function downloadTextFile(content: string, filename: string, mime: string): void
 }
 
 export function App() {
-  const [token] = useState<string>(() => readTokenFromBrowser());
   const [meta, setMeta] = useState<MetaResponse | null>(null);
   const [schema, setSchema] = useState<SchemaObject[]>([]);
   const [schemaSearch, setSchemaSearch] = useState("");
@@ -256,40 +237,34 @@ export function App() {
     [columnFilters],
   );
 
-  const apiFetch = useCallback(
-    async (input: string, init: RequestInit = {}) => {
-      const headers = new Headers(init.headers);
-      headers.set("Content-Type", "application/json");
-      if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
-      }
+  const apiFetch = useCallback(async (input: string, init: RequestInit = {}) => {
+    const headers = new Headers(init.headers);
+    headers.set("Content-Type", "application/json");
 
-      const response = await fetch(input, {
-        ...init,
-        credentials: "include",
-        headers,
-      });
+    const response = await fetch(input, {
+      ...init,
+      credentials: "include",
+      headers,
+    });
 
-      if (!response.ok) {
-        const text = await response.text();
-        let message = text.trim() || `Request failed (${response.status})`;
-        try {
-          const parsed = JSON.parse(text) as { error?: unknown; message?: unknown };
-          if (typeof parsed.error === "string" && parsed.error.trim()) {
-            message = parsed.error;
-          } else if (typeof parsed.message === "string" && parsed.message.trim()) {
-            message = parsed.message;
-          }
-        } catch {
-          /* body is not JSON */
+    if (!response.ok) {
+      const text = await response.text();
+      let message = text.trim() || `Request failed (${response.status})`;
+      try {
+        const parsed = JSON.parse(text) as { error?: unknown; message?: unknown };
+        if (typeof parsed.error === "string" && parsed.error.trim()) {
+          message = parsed.error;
+        } else if (typeof parsed.message === "string" && parsed.message.trim()) {
+          message = parsed.message;
         }
-        throw new Error(message);
+      } catch {
+        /* body is not JSON */
       }
+      throw new Error(message);
+    }
 
-      return response;
-    },
-    [token],
-  );
+    return response;
+  }, []);
 
   const apiGet = useCallback(
     async <T,>(path: string): Promise<T> => {
@@ -762,7 +737,7 @@ export function App() {
             <div className="min-w-0">
               <h1 className="truncate text-sm font-semibold tracking-wide text-foreground">sqlitey</h1>
               <p className="truncate text-xs text-muted-foreground">
-                {meta?.dbPath ?? "Loading database metadata..."} · {meta?.dialect ?? "libsql (SQLite-compatible)"}
+                {meta?.dbPath ?? "Loading database metadata..."} · {meta?.dialect ?? "Turso Database (embedded)"}
               </p>
             </div>
           </div>
@@ -1284,7 +1259,7 @@ export function App() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No custom types from PRAGMA list_types (libSQL extension).</p>
+                      <p className="text-sm text-muted-foreground">No custom types from PRAGMA list_types (not exposed for local files).</p>
                     )}
                   </section>
                 </ScrollArea>

@@ -6,6 +6,9 @@ out
 dist
 *.tgz
 
+# platform-specific Turso N-API binary (see scripts/sync-turso-node-artifact.ts)
+src/turso.node
+
 # local SQLite test DBs (app.db, app.db-wal, app.db-shm, …)
 app.db*
 .tmp

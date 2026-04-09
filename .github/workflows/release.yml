@@ -47,9 +47,9 @@ jobs:
         run: |
           TAG="${{ needs.release-please.outputs.tag_name }}"
           shopt -s nullglob
-          assets=(dist/targets/sqlitey-*)
+          assets=(dist/targets/sqlitey-* dist/targets/turso-*.node)
           if [ ${#assets[@]} -eq 0 ]; then
-            echo "No binaries found in dist/targets/"
+            echo "No release artifacts in dist/targets/"
             exit 1
           fi
           gh release upload "$TAG" "${assets[@]}" --clobber

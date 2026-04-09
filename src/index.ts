@@ -1,5 +1,5 @@
-import "./libsql-native.generated";
-import { createClient, type Row } from "@libsql/client";
+import "./turso-preload";
+import { connect, type Database } from "@tursodatabase/database";
 import { serve } from "bun";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -55,9 +55,53 @@ type FilterInput = {
   value: string;
 };
 
+/** Match SQL `NOT GLOB 'sqlite_*' AND NOT GLOB '__turso_*'` — hide system + Turso-internal objects. */
+function isInternalSchemaObjectName(name: string): boolean {
+  return name.startsWith("sqlite_") || name.startsWith("__turso_");
+}
+
 type RouteRequest = Request & {
   params: Record<string, string | undefined>;
 };
+
+type DbResult = {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  rowsAffected: number;
+};
+
+/**
+ * Adapter: Turso `Database` + `prepare` / `all` / `run` → `{ columns, rows, rowsAffected }` for API handlers.
+ */
+async function dbExecute(db: Database, stmt: string | { sql: string; args?: unknown[] }): Promise<DbResult> {
+  const sql = typeof stmt === "string" ? stmt : stmt.sql;
+  const args = typeof stmt === "string" ? [] : stmt.args ?? [];
+  const prepared = db.prepare(sql);
+  try {
+    const meta = prepared.columns();
+    const columnNames = meta.map(c => c.name);
+    if (columnNames.length > 0) {
+      const rawRows = await prepared.all(...args);
+      const rows = rawRows.map(r => {
+        const row = r as Record<string, unknown>;
+        const out: Record<string, unknown> = {};
+        for (const name of columnNames) {
+          out[name] = row[name];
+        }
+        return out;
+      });
+      return { columns: columnNames, rows, rowsAffected: 0 };
+    }
+    const runResult = await prepared.run(...args);
+    return {
+      columns: [],
+      rows: [],
+      rowsAffected: runResult.changes,
+    };
+  } finally {
+    prepared.close();
+  }
+}
 
 const cli = parseCliArgs(process.argv.slice(2));
 const dbPath = path.resolve(process.cwd(), cli.dbPath);
@@ -69,16 +113,11 @@ if (!existsSync(dbPath)) {
 }
 
 const selectedPort = await findAvailablePort(cli.host, cli.port);
-const sessionToken = createSessionToken();
-const db = createClient({
-  url: `file:${dbPath}`,
-});
+// `fileMustExist` is omitted: Turso 0.5.x treats it incorrectly for existing files (I/O "entity not found").
+const db = await connect(dbPath, {});
 
-const withAuth = (handler: (req: RouteRequest) => Promise<Response>) => {
+const withApi = (handler: (req: RouteRequest) => Promise<Response>) => {
   return async (req: RouteRequest) => {
-    if (!isAuthorized(req, sessionToken)) {
-      return json({ error: "Unauthorized" }, 401);
-    }
     try {
       return await handler(req);
     } catch (error) {
@@ -95,28 +134,28 @@ const server = serve({
   routes: {
     "/": index,
     "/api/meta": {
-      GET: withAuth(async () => {
+      GET: withApi(async () => {
         const customTypes = await listCustomTypes(db);
         return json({
           name: APP_NAME,
           version: APP_VERSION,
-          dialect: "libsql (SQLite-compatible)",
+          dialect: "Turso Database (embedded)",
           dbPath,
           host: cli.host,
           port: selectedPort,
           customTypes,
-          docs: "https://www.sqlite.org/docs.html",
+          docs: "https://docs.turso.tech",
         });
       }),
     },
     "/api/schema": {
-      GET: withAuth(async () => {
+      GET: withApi(async () => {
         const objects = await readSchema(db);
         return json({ objects });
       }),
     },
     "/api/tables/:name/columns": {
-      GET: withAuth(async req => {
+      GET: withApi(async req => {
         const tableNameParam = req.params.name;
         if (!tableNameParam) {
           return json({ error: "Table name is required" }, 400);
@@ -127,7 +166,7 @@ const server = serve({
       }),
     },
     "/api/tables/:name/rows": {
-      GET: withAuth(async req => {
+      GET: withApi(async req => {
         const tableNameParam = req.params.name;
         if (!tableNameParam) {
           return json({ error: "Table name is required" }, 400);
@@ -142,11 +181,11 @@ const server = serve({
         const { whereSql, args } = buildWhereClause(filters);
         const orderBySql = sort?.id ? ` ORDER BY ${quoteIdentifier(sort.id)} ${sort.desc ? "DESC" : "ASC"}` : "";
 
-        const rowsResult = await db.execute({
+        const rowsResult = await dbExecute(db, {
           sql: `SELECT * FROM ${quoteIdentifier(tableName)}${whereSql}${orderBySql} LIMIT ? OFFSET ?`,
           args: [...args, limit, offset],
         });
-        const countResult = await db.execute({
+        const countResult = await dbExecute(db, {
           sql: `SELECT COUNT(*) AS total FROM ${quoteIdentifier(tableName)}${whereSql}`,
           args,
         });
@@ -167,43 +206,59 @@ const server = serve({
       }),
     },
     "/api/tables/:name/ddl": {
-      GET: withAuth(async req => {
+      GET: withApi(async req => {
         const tableNameParam = req.params.name;
         if (!tableNameParam) {
           return json({ error: "Table name is required" }, 400);
         }
         const tableName = decodeURIComponent(tableNameParam);
-        const schemaResult = await db.execute({
-          sql: "SELECT sql, type FROM sqlite_schema WHERE name = ? AND type IN ('table', 'view')",
-          args: [tableName],
-        });
-        const row = schemaResult.rows[0] as Row | undefined;
-        const ddl = typeof row?.sql === "string" ? row.sql : null;
-        const objectType = row?.type === "view" ? "view" : "table";
-        return json({
-          table: tableName,
-          type: objectType,
-          ddl,
-          foreignKeys: ddl ? parseForeignKeysFromCreate(ddl) : [],
-        });
+        try {
+          const schemaResult = await dbExecute(db, {
+            sql: "SELECT sql, type FROM sqlite_master WHERE name = ? AND type IN ('table', 'view')",
+            args: [tableName],
+          });
+          const row = schemaResult.rows[0];
+          const ddl = typeof row?.sql === "string" ? row.sql : null;
+          const objectType = row?.type === "view" ? "view" : "table";
+          return json({
+            table: tableName,
+            type: objectType,
+            ddl,
+            foreignKeys: ddl ? parseForeignKeysFromCreate(ddl) : [],
+          });
+        } catch {
+          return json({
+            table: tableName,
+            type: "table" as const,
+            ddl: null,
+            foreignKeys: [] as ForeignKeyInfo[],
+          });
+        }
       }),
     },
     "/api/tables/:name/indices": {
-      GET: withAuth(async req => {
+      GET: withApi(async req => {
         const tableNameParam = req.params.name;
         if (!tableNameParam) {
           return json({ error: "Table name is required" }, 400);
         }
         const tableName = decodeURIComponent(tableNameParam);
-        const indexList = await db.execute(`PRAGMA index_list(${quoteIdentifier(tableName)})`);
+        const indexList = await dbExecute(db, `PRAGMA index_list(${quoteIdentifier(tableName)})`);
+        const visibleIndexes = indexList.rows.filter(row => !isInternalSchemaObjectName(String(row.name ?? "")));
         const indices = await Promise.all(
-          indexList.rows.map(async indexRow => {
+          visibleIndexes.map(async indexRow => {
             const indexName = String(indexRow.name ?? "");
-            const indexSql = await db.execute({
-              sql: "SELECT sql FROM sqlite_schema WHERE type = 'index' AND name = ?",
-              args: [indexName],
-            });
-            const columnsResult = await db.execute(`PRAGMA index_info(${quoteIdentifier(indexName)})`);
+            let indexSql: DbResult = { columns: [], rows: [], rowsAffected: 0 };
+            let columnsResult: DbResult = { columns: [], rows: [], rowsAffected: 0 };
+            try {
+              indexSql = await dbExecute(db, {
+                sql: "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?",
+                args: [indexName],
+              });
+              columnsResult = await dbExecute(db, `PRAGMA index_info(${quoteIdentifier(indexName)})`);
+            } catch {
+              // Rare: internal index slipped through or schema edge case
+            }
             return {
               name: indexName,
               unique: Boolean(indexRow.unique),
@@ -222,7 +277,7 @@ const server = serve({
       }),
     },
     "/api/query": {
-      POST: withAuth(async req => {
+      POST: withApi(async req => {
         const body = await parseJsonBody<{ sql?: string; allowWrite?: boolean }>(req);
         const sqlText = body.sql?.trim() ?? "";
         const allowWrite = body.allowWrite === true;
@@ -235,7 +290,7 @@ const server = serve({
         }
 
         const started = performance.now();
-        const result = await db.execute(sqlText);
+        const result = await dbExecute(db, sqlText);
         const durationMs = Number((performance.now() - started).toFixed(2));
 
         return json({
@@ -247,7 +302,7 @@ const server = serve({
       }),
     },
     "/api/export": {
-      POST: withAuth(async req => {
+      POST: withApi(async req => {
         const body = await parseJsonBody<{
           table?: string;
           format?: "csv" | "json";
@@ -265,7 +320,7 @@ const server = serve({
         const sort = body.sort?.[0];
         const orderBySql = sort?.id ? ` ORDER BY ${quoteIdentifier(sort.id)} ${sort.desc ? "DESC" : "ASC"}` : "";
 
-        const result = await db.execute(`SELECT * FROM ${quoteIdentifier(tableName)}${orderBySql} LIMIT ${limit}`);
+        const result = await dbExecute(db, `SELECT * FROM ${quoteIdentifier(tableName)}${orderBySql} LIMIT ${limit}`);
         const rows = result.rows.map(normalizeRow);
         const baseName = `${tableName}-${Date.now()}`;
 
@@ -295,27 +350,27 @@ const server = serve({
   },
 });
 
-const entryUrl = `http://${cli.host}:${selectedPort}/?token=${sessionToken}`;
+const entryUrl = `http://${cli.host}:${selectedPort}/`;
 console.log(`\n${APP_NAME} v${APP_VERSION}`);
 console.log(`Database: ${dbPath}`);
 console.log(`Listening on: ${entryUrl}`);
-console.log(`SQLite docs: https://www.sqlite.org/docs.html\n`);
 
 if (cli.open) {
   openBrowser(entryUrl);
 }
 
-process.on("SIGINT", () => {
+async function shutdown() {
   server.stop(true);
-  db.close();
+  try {
+    await db.close();
+  } catch {
+    // ignore close errors
+  }
   process.exit(0);
-});
+}
 
-process.on("SIGTERM", () => {
-  server.stop(true);
-  db.close();
-  process.exit(0);
-});
+process.on("SIGINT", () => void shutdown());
+process.on("SIGTERM", () => void shutdown());
 
 function parseCliArgs(argv: string[]): CliOptions {
   const options: CliOptions = {
@@ -392,7 +447,7 @@ function printHelpAndExit(exitCode: number, message?: string): never {
     console.error("");
   }
 
-  console.log(`${APP_NAME} — local SQLite browser (libSQL driver)
+  console.log(`${APP_NAME} — local SQLite browser (Turso Database)
 
 Usage:
   bun src/index.ts [options] <database-path>
@@ -430,25 +485,6 @@ function isPortFree(host: string, port: number): Promise<boolean> {
       probe.close(() => resolve(true));
     });
   });
-}
-
-function createSessionToken(): string {
-  return crypto.randomUUID().replace(/-/g, "");
-}
-
-function isAuthorized(req: Request, token: string): boolean {
-  const url = new URL(req.url);
-  const queryToken = url.searchParams.get("token");
-  if (queryToken === token) {
-    return true;
-  }
-
-  const authHeader = req.headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ") && authHeader.slice("Bearer ".length) === token) {
-    return true;
-  }
-
-  return false;
 }
 
 async function parseJsonBody<T>(req: Request): Promise<T> {
@@ -509,7 +545,7 @@ function buildWhereClause(filters: FilterInput[]): { whereSql: string; args: str
   };
 }
 
-function normalizeRow(row: Row): Record<string, unknown> {
+function normalizeRow(row: Record<string, unknown>): Record<string, unknown> {
   const normalized: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(row)) {
     normalized[key] = normalizeValue(value);
@@ -527,36 +563,31 @@ function normalizeValue(value: unknown): unknown {
   return value;
 }
 
-async function listCustomTypes(client: ReturnType<typeof createClient>): Promise<string[]> {
-  try {
-    const result = await client.execute("PRAGMA list_types");
-    return result.rows
-      .map(row => String(row.name ?? row.type ?? "").trim())
-      .filter(Boolean)
-      .sort((left, right) => left.localeCompare(right));
-  } catch {
-    return [];
-  }
+async function listCustomTypes(_db: Database): Promise<string[]> {
+  return [];
 }
 
-async function readSchema(client: ReturnType<typeof createClient>): Promise<SchemaObject[]> {
-  const schemaRows = await client.execute(
-    // Hide sqlite/system tables and libSQL-internal names (prefix used by some libSQL builds).
-    // LIKE treats `_` as a single-char wildcard; use GLOB so `__turso_*` / `sqlite_*` match real prefixes.
-    "SELECT name, type, sql FROM sqlite_schema WHERE type IN ('table', 'view') AND name NOT GLOB 'sqlite_*' AND name NOT GLOB '__turso_*' ORDER BY type, name",
+async function readSchema(client: Database): Promise<SchemaObject[]> {
+  const listResult = await dbExecute(
+    client,
+    `SELECT name, type FROM sqlite_master
+     WHERE type IN ('table', 'view')
+       AND name NOT GLOB 'sqlite_*'
+       AND name NOT GLOB '__turso_*'
+     ORDER BY type, name`,
   );
 
   const objects = await Promise.all(
-    schemaRows.rows.map(async row => {
+    listResult.rows.map(async row => {
       const name = String(row.name ?? "");
       const type = row.type === "view" ? "view" : "table";
-      const sql = typeof row.sql === "string" ? row.sql : null;
+      const sql: string | null = null;
       const columns = type === "table" ? await readTableColumns(client, name) : [];
 
       let rowCount: number | null = null;
       if (type === "table") {
         try {
-          const countResult = await client.execute(`SELECT COUNT(*) AS total FROM ${quoteIdentifier(name)}`);
+          const countResult = await dbExecute(client, `SELECT COUNT(*) AS total FROM ${quoteIdentifier(name)}`);
           const countValue = countResult.rows[0]?.total;
           rowCount = typeof countValue === "number" ? countValue : Number(countValue ?? 0);
         } catch {
@@ -570,7 +601,7 @@ async function readSchema(client: ReturnType<typeof createClient>): Promise<Sche
         sql,
         rowCount,
         columns,
-        foreignKeys: sql ? parseForeignKeysFromCreate(sql) : [],
+        foreignKeys: [],
       } satisfies SchemaObject;
     }),
   );
@@ -578,8 +609,8 @@ async function readSchema(client: ReturnType<typeof createClient>): Promise<Sche
   return objects;
 }
 
-async function readTableColumns(client: ReturnType<typeof createClient>, tableName: string): Promise<TableColumn[]> {
-  const result = await client.execute(`PRAGMA table_info(${quoteIdentifier(tableName)})`);
+async function readTableColumns(client: Database, tableName: string): Promise<TableColumn[]> {
+  const result = await dbExecute(client, `PRAGMA table_info(${quoteIdentifier(tableName)})`);
   return result.rows.map(row => ({
     cid: Number(row.cid ?? 0),
     name: String(row.name ?? ""),

@@ -8,16 +8,16 @@ function tarballUrl(packageName: string, version: string): string {
 }
 
 /**
- * Install a specific `@libsql/*` platform package into `node_modules` from the npm registry,
- * so `import "@libsql/…"` resolves during `bun build --compile --target=…` even when cross-compiling
- * (e.g. Linux CI building a darwin-arm64 binary).
+ * Install a specific `@tursodatabase/database-*` platform package into `node_modules` from npm,
+ * so `require("@tursodatabase/database-…")` resolves during `bun build --compile --target=…`
+ * when cross-compiling.
  */
-export async function ensureLibsqlNativePackage(
+export async function ensureTursoNativePackage(
   rootDir: string,
   packageName: string,
-  version: string
+  version: string,
 ): Promise<void> {
-  const tmp = path.join(rootDir, ".tmp-libsql-pack");
+  const tmp = path.join(rootDir, ".tmp-turso-pack");
   await fs.rm(tmp, { recursive: true, force: true });
   await fs.mkdir(tmp, { recursive: true });
 

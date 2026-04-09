@@ -86,6 +86,16 @@ detect_asset_name() {
   fi
 }
 
+# Native addon shipped next to the executable (see scripts/release.ts).
+detect_turso_asset_name() {
+  local base
+  base=$(detect_asset_name)
+  if [[ "$base" == *.exe ]]; then
+    base="${base%.exe}"
+  fi
+  echo "turso-${base#sqlitey-}.node"
+}
+
 default_install_dir() {
   SQLITEY_INSTALL="${SQLITEY_INSTALL:-$HOME/.local}"
   echo "${SQLITEY_INSTALL}/bin"
@@ -261,8 +271,9 @@ main() {
     esac
   done
 
-  local asset_name
+  local asset_name turso_asset_name
   asset_name=$(detect_asset_name)
+  turso_asset_name=$(detect_turso_asset_name)
 
   local dest_name="sqlitey"
   [[ "$asset_name" == *.exe ]] && dest_name="sqlitey.exe"
@@ -286,10 +297,14 @@ main() {
   url=$(get_asset_url "$tmp" "$asset_name")
   [[ -n "$url" && "$url" != "null" ]] || die "no release asset named: $asset_name (is this platform published?)"
 
+  local turso_url
+  turso_url=$(get_asset_url "$tmp" "$turso_asset_name")
+  [[ -n "$turso_url" && "$turso_url" != "null" ]] || die "no release asset named: $turso_asset_name (publish both sqlitey and turso-*.node from scripts/release.ts)"
+
   mkdir -p "$install_dir" "$VERSION_DIR" || die "cannot create directories under $install_dir"
 
   if [[ "$force" -eq 0 ]] && [[ -f "$VERSION_FILE" ]] && [[ "$(cat "$VERSION_FILE" 2>/dev/null || true)" == "$tag" ]]; then
-    if [[ -x "$install_dir/$dest_name" ]]; then
+    if [[ -x "$install_dir/$dest_name" ]] && [[ -f "$install_dir/$turso_asset_name" ]]; then
       echo "sqlitey is already at latest ($tag) in $install_dir"
       ensure_sqlitey_on_path "$install_dir" "$dest_name"
       exit 0
@@ -303,6 +318,13 @@ main() {
   echo "Downloading $asset_name ($tag) ..."
   curl -fL --progress-bar -o "$dl" "$url" || die "download failed"
 
+  local dl2
+  dl2=$(mktemp)
+  trap 'rm -f "$tmp" "$dl" "$dl2"' EXIT
+
+  echo "Downloading $turso_asset_name ($tag) ..."
+  curl -fL --progress-bar -o "$dl2" "$turso_url" || die "download failed (turso native addon)"
+
   if [[ "$asset_name" == *.exe ]]; then
     mv -f "$dl" "$install_dir/$dest_name"
   else
@@ -310,8 +332,10 @@ main() {
     install -m 0755 "$dl" "$install_dir/$dest_name"
   fi
 
+  install -m 0644 "$dl2" "$install_dir/$turso_asset_name"
+
   printf '%s\n' "$tag" >"$VERSION_FILE"
-  echo "Installed $install_dir/$dest_name ($tag)"
+  echo "Installed $install_dir/$dest_name + $install_dir/$turso_asset_name ($tag)"
 
   ensure_sqlitey_on_path "$install_dir" "$dest_name"
 }
