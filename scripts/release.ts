@@ -9,10 +9,13 @@ const rootDir = path.resolve(import.meta.dir, "..");
 const distDir = path.join(rootDir, "dist", "targets");
 await fs.mkdir(distDir, { recursive: true });
 
-/** Windows arm64 has no `@tursodatabase/database-win32-arm64-msvc` in optional deps yet — omit. */
+/**
+ * Omitted targets (no matching `@tursodatabase/database-*` prebuild on npm for our pinned version):
+ * - `bun-windows-arm64` — no win32-arm64 optional dep
+ * - `bun-darwin-x64` — Turso only ships `@tursodatabase/database-darwin-arm64` for macOS (Apple Silicon)
+ */
 const TARGETS: { bunTarget: string; platform: string }[] = [
   { bunTarget: "bun-darwin-arm64", platform: "darwin-arm64" },
-  { bunTarget: "bun-darwin-x64", platform: "darwin-x64" },
   { bunTarget: "bun-linux-x64", platform: "linux-x64" },
   { bunTarget: "bun-linux-arm64", platform: "linux-arm64" },
   { bunTarget: "bun-windows-x64", platform: "win32-x64" },

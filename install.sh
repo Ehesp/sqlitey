@@ -13,7 +13,8 @@
 set -euo pipefail
 
 readonly REPO="Ehesp/sqlitey"
-readonly API_LATEST="https://api.github.com/repos/${REPO}/releases/latest"
+# List releases (not /releases/latest): "latest" can exist before CI uploads assets.
+readonly API_RELEASES="https://api.github.com/repos/${REPO}/releases?per_page=100"
 readonly VERSION_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sqlitey"
 readonly VERSION_FILE="${VERSION_DIR}/version"
 
@@ -26,29 +27,56 @@ need_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
 }
 
-get_tag_name() {
-  local json="$1"
+# Pick newest non-draft release that already has both binaries (avoids empty "latest" during CI).
+resolve_release_with_assets() {
+  local json="$1" asset_name="$2" turso_asset_name="$3"
   if command -v jq >/dev/null 2>&1; then
-    jq -r '.tag_name' "$json"
-  else
-    grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' "$json" | head -1 | sed 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/'
-  fi
-}
-
-get_asset_url() {
-  local json="$1" name="$2"
-  if command -v jq >/dev/null 2>&1; then
-    jq -r --arg n "$name" '.assets[] | select(.name == $n) | .browser_download_url' "$json" | head -1
+    jq -r --arg a1 "$asset_name" --arg a2 "$turso_asset_name" '
+      def asset_ok:
+        ([.assets[].name] | (index($a1) != null) and (index($a2) != null));
+      def pick($stable):
+        .[] | select(.draft == false)
+          | select(if $stable then (.prerelease == false) else true end)
+          | select(asset_ok);
+      (first(pick(true)) // first(pick(false)))
+      | "\(.tag_name)\t\(([.assets[] | select(.name == $a1)][0].browser_download_url))\t\(([.assets[] | select(.name == $a2)][0].browser_download_url))"
+    ' "$json"
   elif command -v python3 >/dev/null 2>&1; then
-    python3 - "$json" "$name" <<'PY'
+    python3 - "$json" "$asset_name" "$turso_asset_name" <<'PY'
 import json, sys
+
 with open(sys.argv[1], encoding="utf-8") as f:
-    data = json.load(f)
-want = sys.argv[2]
-for a in data.get("assets", []):
-    if a.get("name") == want:
-        print(a.get("browser_download_url") or "")
-        break
+    releases = json.load(f)
+a1, a2 = sys.argv[2], sys.argv[3]
+
+
+def row(rel):
+    by_name = {}
+    for x in rel.get("assets") or []:
+        n, u = x.get("name"), x.get("browser_download_url")
+        if n and u:
+            by_name[n] = u
+    if a1 in by_name and a2 in by_name:
+        tag = rel.get("tag_name") or ""
+        return f"{tag}\t{by_name[a1]}\t{by_name[a2]}"
+    return None
+
+
+def emit(stable_only):
+    for rel in releases:
+        if rel.get("draft"):
+            continue
+        if stable_only and rel.get("prerelease"):
+            continue
+        r = row(rel)
+        if r:
+            print(r)
+            sys.exit(0)
+
+
+emit(True)
+emit(False)
+sys.exit(1)
 PY
   else
     die "install jq or python3 to parse GitHub release JSON"
@@ -285,20 +313,18 @@ main() {
   trap 'rm -f "$tmp"' EXIT
 
   if ! curl -fsSL -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" \
-    "$API_LATEST" -o "$tmp"; then
+    "$API_RELEASES" -o "$tmp"; then
     die "failed to fetch release metadata from GitHub (check network, rate limits, and that ${REPO} exists and is public)"
   fi
   [[ -s "$tmp" ]] || die "empty response from GitHub API"
 
-  local tag url
-  tag=$(get_tag_name "$tmp")
+  local tag url turso_url line
+  line=$(resolve_release_with_assets "$tmp" "$asset_name" "$turso_asset_name") || true
+  [[ -n "$line" ]] || die "no release with both $asset_name and $turso_asset_name yet (wait for CI to finish uploading assets, or try again)"
+
+  IFS=$'\t' read -r tag url turso_url <<<"$line"
   [[ -n "$tag" && "$tag" != "null" ]] || die "could not parse release tag"
-
-  url=$(get_asset_url "$tmp" "$asset_name")
   [[ -n "$url" && "$url" != "null" ]] || die "no release asset named: $asset_name (is this platform published?)"
-
-  local turso_url
-  turso_url=$(get_asset_url "$tmp" "$turso_asset_name")
   [[ -n "$turso_url" && "$turso_url" != "null" ]] || die "no release asset named: $turso_asset_name (publish both sqlitey and turso-*.node from scripts/release.ts)"
 
   mkdir -p "$install_dir" "$VERSION_DIR" || die "cannot create directories under $install_dir"
