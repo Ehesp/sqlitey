@@ -7,7 +7,9 @@
 
   body {
     @apply min-w-[320px] min-h-screen m-0 bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
     background:
       radial-gradient(circle at 10% 0%, oklch(0.26 0.03 240 / 0.45), transparent 40%),
       radial-gradient(circle at 90% 10%, oklch(0.32 0.02 300 / 0.25), transparent 42%),
@@ -53,7 +55,9 @@
 }
 
 .cm-scroller {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
 }
 
 @keyframes spin {

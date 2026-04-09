@@ -1,5 +1,3 @@
-/// <reference path="../bun-env.d.ts" />
-
 import type { CompletionContext } from "@codemirror/autocomplete";
 import { autocompletion } from "@codemirror/autocomplete";
 import { sql } from "@codemirror/lang-sql";
@@ -28,7 +26,14 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from "react-resizable-panels";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,9 +53,21 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { SQL_EDITOR_KEYWORDS } from "@/lib/sql-keywords";
@@ -150,10 +167,26 @@ function buildPaginationTokens(currentPage: number, totalPages: number): Paginat
   }
 
   if (currentPage >= totalPages - 3) {
-    return [1, "left-ellipsis", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    return [
+      1,
+      "left-ellipsis",
+      totalPages - 4,
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    ];
   }
 
-  return [1, "left-ellipsis", currentPage - 1, currentPage, currentPage + 1, "right-ellipsis", totalPages];
+  return [
+    1,
+    "left-ellipsis",
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    "right-ellipsis",
+    totalPages,
+  ];
 }
 
 function buildQueryResultCsv(columns: string[], rows: Record<string, unknown>[]): string {
@@ -166,7 +199,7 @@ function buildQueryResultCsv(columns: string[], rows: Record<string, unknown>[])
   };
   const lines = [columns.join(",")];
   for (const row of rows) {
-    lines.push(columns.map(column => escape(row[column])).join(","));
+    lines.push(columns.map((column) => escape(row[column])).join(","));
   }
   return lines.join("\n");
 }
@@ -174,7 +207,7 @@ function buildQueryResultCsv(columns: string[], rows: Record<string, unknown>[])
 function buildQueryResultTsv(columns: string[], rows: Record<string, unknown>[]): string {
   return [
     columns.join("\t"),
-    ...rows.map(row => columns.map(columnName => String(row[columnName] ?? "")).join("\t")),
+    ...rows.map((row) => columns.map((columnName) => String(row[columnName] ?? "")).join("\t")),
   ].join("\n");
 }
 
@@ -244,7 +277,7 @@ export function App() {
   const tableHeaderTransformRef = useRef<HTMLDivElement>(null);
   const tableViewportRef = useRef<HTMLDivElement>(null);
   const selectedTableInfo = useMemo(
-    () => schema.find(item => item.name === selectedTable) ?? null,
+    () => schema.find((item) => item.name === selectedTable) ?? null,
     [schema, selectedTable],
   );
 
@@ -253,14 +286,14 @@ export function App() {
     if (!normalized) {
       return schema;
     }
-    return schema.filter(item => item.name.toLowerCase().includes(normalized));
+    return schema.filter((item) => item.name.toLowerCase().includes(normalized));
   }, [schema, schemaSearch]);
 
   const filterEntries = useMemo(
     () =>
       Object.entries(columnFilters)
         .map(([id, value]) => ({ id, value: value.trim() }))
-        .filter(item => item.value.length > 0),
+        .filter((item) => item.value.length > 0),
     [columnFilters],
   );
 
@@ -313,9 +346,10 @@ export function App() {
       setMeta(metaPayload);
       setSchema(schemaPayload.objects);
 
-      setSelectedTable(current => {
-        if (!current || !schemaPayload.objects.some(item => item.name === current)) {
-          const firstTable = schemaPayload.objects.find(item => item.type === "table") ?? schemaPayload.objects[0];
+      setSelectedTable((current) => {
+        if (!current || !schemaPayload.objects.some((item) => item.name === current)) {
+          const firstTable =
+            schemaPayload.objects.find((item) => item.type === "table") ?? schemaPayload.objects[0];
           return firstTable?.name ?? null;
         }
         return current;
@@ -348,11 +382,11 @@ export function App() {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        setCommandPaletteOpen(current => !current);
+        setCommandPaletteOpen((current) => !current);
       }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "j") {
         event.preventDefault();
-        setQuerySheetOpen(current => !current);
+        setQuerySheetOpen((current) => !current);
       }
     };
 
@@ -403,7 +437,9 @@ export function App() {
     });
 
     try {
-      const payload = await apiGet<RowsResponse>(`/api/tables/${encodeURIComponent(selectedTable)}/rows?${params}`);
+      const payload = await apiGet<RowsResponse>(
+        `/api/tables/${encodeURIComponent(selectedTable)}/rows?${params}`,
+      );
       setRowsResponse(payload);
       setSelectedRow(null);
       setSelectedRowId(null);
@@ -450,7 +486,7 @@ export function App() {
     if (!selectedTable) {
       return;
     }
-    setQuerySql(prev =>
+    setQuerySql((prev) =>
       prev.trim().length === 0 ? `SELECT * FROM "${selectedTable}" LIMIT 100;` : prev,
     );
   }, [selectedTable]);
@@ -462,8 +498,12 @@ export function App() {
     if (!normalizedTableSearch) {
       return tableRows;
     }
-    return tableRows.filter(row =>
-      Object.values(row).some(value => String(value ?? "").toLowerCase().includes(normalizedTableSearch)),
+    return tableRows.filter((row) =>
+      Object.values(row).some((value) =>
+        String(value ?? "")
+          .toLowerCase()
+          .includes(normalizedTableSearch),
+      ),
     );
   }, [normalizedTableSearch, tableRows]);
 
@@ -475,17 +515,17 @@ export function App() {
       minSize: 52,
       maxSize: 90,
       enableSorting: false,
-      cell: info => pageIndex * pageSize + info.row.index + 1,
+      cell: (info) => pageIndex * pageSize + info.row.index + 1,
     };
 
-    const mappedColumns: ColumnDef<Record<string, unknown>>[] = rowColumns.map(columnName => ({
+    const mappedColumns: ColumnDef<Record<string, unknown>>[] = rowColumns.map((columnName) => ({
       accessorKey: columnName,
       id: columnName,
       size: 220,
       minSize: 120,
       header: columnName,
       enableSorting: true,
-      cell: info => renderCellValue(info.getValue()),
+      cell: (info) => renderCellValue(info.getValue()),
     }));
 
     return [indexColumn, ...mappedColumns];
@@ -496,12 +536,12 @@ export function App() {
     columns: tableColumns,
     state: { sorting, columnSizing },
     manualSorting: true,
-    onSortingChange: updater => {
+    onSortingChange: (updater) => {
       setPageIndex(0);
-      setSorting(current => (typeof updater === "function" ? updater(current) : updater));
+      setSorting((current) => (typeof updater === "function" ? updater(current) : updater));
     },
-    onColumnSizingChange: updater => {
-      setColumnSizing(current => (typeof updater === "function" ? updater(current) : updater));
+    onColumnSizingChange: (updater) => {
+      setColumnSizing((current) => (typeof updater === "function" ? updater(current) : updater));
     },
     columnResizeMode: "onChange",
     enableColumnResizing: true,
@@ -585,7 +625,7 @@ export function App() {
 
       return {
         from: tokenCandidate?.from ?? context.pos,
-        options: SQL_EDITOR_KEYWORDS.map(label => ({
+        options: SQL_EDITOR_KEYWORDS.map((label) => ({
           label,
           type: "keyword" as const,
         })),
@@ -747,7 +787,9 @@ export function App() {
 
     const lines = [
       rowsResponse.columns.join("\t"),
-      ...visibleRows.map(row => rowsResponse.columns.map(columnName => String(row[columnName] ?? "")).join("\t")),
+      ...visibleRows.map((row) =>
+        rowsResponse.columns.map((columnName) => String(row[columnName] ?? "")).join("\t"),
+      ),
     ];
     await navigator.clipboard.writeText(lines.join("\n"));
   }, [rowsResponse, visibleRows]);
@@ -759,9 +801,17 @@ export function App() {
       }
       const base = `query-result-${Date.now()}`;
       if (format === "json") {
-        downloadTextFile(JSON.stringify(queryResult.rows, null, 2), `${base}.json`, "application/json;charset=utf-8");
+        downloadTextFile(
+          JSON.stringify(queryResult.rows, null, 2),
+          `${base}.json`,
+          "application/json;charset=utf-8",
+        );
       } else {
-        downloadTextFile(buildQueryResultCsv(queryResult.columns, queryResult.rows), `${base}.csv`, "text/csv;charset=utf-8");
+        downloadTextFile(
+          buildQueryResultCsv(queryResult.columns, queryResult.rows),
+          `${base}.csv`,
+          "text/csv;charset=utf-8",
+        );
       }
     },
     [queryResult],
@@ -819,9 +869,12 @@ export function App() {
               <DatabaseIcon />
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-semibold tracking-wide text-foreground">sqlitey</h1>
+              <h1 className="truncate text-sm font-semibold tracking-wide text-foreground">
+                sqlitey
+              </h1>
               <p className="truncate text-xs text-muted-foreground">
-                {meta?.dbPath ?? "Loading database metadata..."} · {meta?.dialect ?? "Turso Database (embedded)"}
+                {meta?.dbPath ?? "Loading database metadata..."} ·{" "}
+                {meta?.dialect ?? "Turso Database (embedded)"}
               </p>
             </div>
           </div>
@@ -830,7 +883,9 @@ export function App() {
             <Button variant="outline" size="sm" onClick={() => setCommandPaletteOpen(true)}>
               <SparklesIcon data-icon="inline-start" />
               Command
-              <kbd className="ml-2 rounded border border-border bg-muted px-1.5 text-[10px]">⌘K</kbd>
+              <kbd className="ml-2 rounded border border-border bg-muted px-1.5 text-[10px]">
+                ⌘K
+              </kbd>
             </Button>
             <div className="flex items-center gap-1">
               <Button variant="outline" size="sm" onClick={() => setQuerySheetOpen(true)}>
@@ -857,7 +912,8 @@ export function App() {
                 size="icon-sm"
                 className={cn(
                   "size-8 shrink-0",
-                  queryAllowWrite && "border-amber-500/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/15",
+                  queryAllowWrite &&
+                    "border-amber-500/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/15",
                 )}
                 title={
                   queryAllowWrite
@@ -866,9 +922,13 @@ export function App() {
                 }
                 aria-pressed={queryAllowWrite}
                 aria-label={queryAllowWrite ? "Switch to read-only SQL" : "Allow read/write SQL"}
-                onClick={() => setQueryAllowWrite(value => !value)}
+                onClick={() => setQueryAllowWrite((value) => !value)}
               >
-                {queryAllowWrite ? <UnlockIcon className="size-4" /> : <LockIcon className="size-4" />}
+                {queryAllowWrite ? (
+                  <UnlockIcon className="size-4" />
+                ) : (
+                  <LockIcon className="size-4" />
+                )}
               </Button>
             </div>
           </div>
@@ -897,21 +957,23 @@ export function App() {
             <div className="flex items-center justify-between px-4 py-3">
               <div className="flex items-center gap-2">
                 <Table2Icon className="size-4 text-muted-foreground" />
-                <h2 className="text-xs font-semibold tracking-wide text-muted-foreground">Explorer</h2>
+                <h2 className="text-xs font-semibold tracking-wide text-muted-foreground">
+                  Explorer
+                </h2>
               </div>
               <Badge variant="secondary">{schema.length}</Badge>
             </div>
             <div className="px-4 pb-3">
               <Input
                 value={schemaSearch}
-                onChange={event => setSchemaSearch(event.target.value)}
+                onChange={(event) => setSchemaSearch(event.target.value)}
                 placeholder="Filter tables or views..."
               />
             </div>
             <Separator />
             <ScrollArea className="min-h-0 flex-1">
               <div className="space-y-1 p-2">
-                {filteredSchema.map(item => (
+                {filteredSchema.map((item) => (
                   <button
                     key={item.name}
                     type="button"
@@ -929,13 +991,18 @@ export function App() {
                   >
                     <div className="mb-1 flex items-center justify-between gap-2">
                       <p className="truncate text-sm font-medium">{item.name}</p>
-                      <Badge variant={item.type === "table" ? "default" : "outline"} className="text-[10px]">
+                      <Badge
+                        variant={item.type === "table" ? "default" : "outline"}
+                        className="text-[10px]"
+                      >
                         {item.type}
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>{item.columns.length} cols</span>
-                      <span>{item.rowCount == null ? "n/a" : `${item.rowCount.toLocaleString()} rows`}</span>
+                      <span>
+                        {item.rowCount == null ? "n/a" : `${item.rowCount.toLocaleString()} rows`}
+                      </span>
                     </div>
                   </button>
                 ))}
@@ -948,14 +1015,17 @@ export function App() {
           <Panel id="panelCenter" minSize="38%" className="@container flex min-w-0 flex-col">
             <div className="flex flex-col gap-3 border-b border-border/70 px-4 py-3 @[40rem]:flex-row @[40rem]:items-center @[40rem]:justify-between">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{selectedTableInfo?.name ?? "Select a table"}</p>
+                <p className="truncate text-sm font-semibold">
+                  {selectedTableInfo?.name ?? "Select a table"}
+                </p>
                 {selectedTableInfo ? (
                   <p className="text-xs text-muted-foreground">
                     {selectedTableInfo.rowCount == null
                       ? "Row count n/a"
                       : `${selectedTableInfo.rowCount.toLocaleString()} rows`}
                     {" · "}
-                    {selectedTableInfo.columns.length} column{selectedTableInfo.columns.length === 1 ? "" : "s"}
+                    {selectedTableInfo.columns.length} column
+                    {selectedTableInfo.columns.length === 1 ? "" : "s"}
                     {" · "}
                     {inspectorLoading
                       ? "…"
@@ -967,7 +1037,7 @@ export function App() {
               <div className="flex min-w-0 flex-wrap items-center gap-2 @[40rem]:shrink-0">
                 <Input
                   value={tableSearch}
-                  onChange={event => setTableSearch(event.target.value)}
+                  onChange={(event) => setTableSearch(event.target.value)}
                   placeholder="Search current page..."
                   className="h-8 min-w-0 w-full @[40rem]:w-[220px]"
                 />
@@ -980,14 +1050,23 @@ export function App() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => void copyCurrentPageAsTsv()}>Copy as Excel (TSV)</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => void copyCurrentPageAsTsv()}>
+                      Copy as Excel (TSV)
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => void downloadExport("csv")}>Download CSV</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => void downloadExport("json")}>Download JSON</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => void downloadExport("csv")}>
+                      Download CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => void downloadExport("json")}>
+                      Download JSON
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Button variant="outline" size="sm" onClick={() => void refreshSchemaAndMeta()}>
-                  <RefreshCwIcon data-icon="inline-start" className={cn(loading && "animate-spin")} />
+                  <RefreshCwIcon
+                    data-icon="inline-start"
+                    className={cn(loading && "animate-spin")}
+                  />
                   Refresh
                 </Button>
               </div>
@@ -999,9 +1078,9 @@ export function App() {
                 onWheel={handleHeaderStripWheel}
               >
                 <div ref={tableHeaderTransformRef} style={{ width: `${totalTableWidth}px` }}>
-                  {table.getHeaderGroups().map(headerGroup => (
+                  {table.getHeaderGroups().map((headerGroup) => (
                     <div key={headerGroup.id} className="flex">
-                      {headerGroup.headers.map(header => {
+                      {headerGroup.headers.map((header) => {
                         const isIndex = header.column.id === "__rowIndex";
                         return (
                           <div
@@ -1011,7 +1090,10 @@ export function App() {
                           >
                             <button
                               type="button"
-                              className={cn("inline-flex items-center gap-1", header.column.getCanSort() && "cursor-pointer")}
+                              className={cn(
+                                "inline-flex items-center gap-1",
+                                header.column.getCanSort() && "cursor-pointer",
+                              )}
                               onClick={header.column.getToggleSortingHandler()}
                               disabled={!header.column.getCanSort()}
                             >
@@ -1033,7 +1115,7 @@ export function App() {
                   ))}
 
                   <div className="flex border-t border-border/60 bg-background/80">
-                    {table.getAllColumns().map(column => (
+                    {table.getAllColumns().map((column) => (
                       <div
                         key={column.id}
                         style={{ width: column.getSize() }}
@@ -1044,8 +1126,8 @@ export function App() {
                         ) : (
                           <Input
                             value={columnFilters[column.id] ?? ""}
-                            onChange={event => {
-                              setColumnFilters(current => ({
+                            onChange={(event) => {
+                              setColumnFilters((current) => ({
                                 ...current,
                                 [column.id]: event.target.value,
                               }));
@@ -1067,9 +1149,13 @@ export function App() {
                 onScroll={handleTableViewportScroll}
               >
                 {rowsLoading ? (
-                  <div className="grid h-full place-items-center text-sm text-muted-foreground">Loading rows...</div>
+                  <div className="grid h-full place-items-center text-sm text-muted-foreground">
+                    Loading rows...
+                  </div>
                 ) : visibleTableRows.length === 0 ? (
-                  <div className="grid h-full place-items-center text-sm text-muted-foreground">No rows for this page.</div>
+                  <div className="grid h-full place-items-center text-sm text-muted-foreground">
+                    No rows for this page.
+                  </div>
                 ) : (
                   <div
                     className="relative"
@@ -1078,7 +1164,7 @@ export function App() {
                       width: `${table.getTotalSize()}px`,
                     }}
                   >
-                    {virtualRows.map(virtualItem => {
+                    {virtualRows.map((virtualItem) => {
                       const row = visibleTableRows[virtualItem.index];
                       if (!row) {
                         return null;
@@ -1102,7 +1188,7 @@ export function App() {
                             setSelectedRowId(rowIdentifier);
                           }}
                         >
-                          {row.getVisibleCells().map(cell => (
+                          {row.getVisibleCells().map((cell) => (
                             <div
                               key={cell.id}
                               style={{ width: cell.column.getSize() }}
@@ -1121,12 +1207,13 @@ export function App() {
 
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border/70 px-4 py-2 text-sm">
                 <div className="min-w-0 shrink text-muted-foreground">
-                  Page {currentPage} / {totalPages} · {rowsResponse?.page.total.toLocaleString() ?? 0} total rows
+                  Page {currentPage} / {totalPages} ·{" "}
+                  {rowsResponse?.page.total.toLocaleString() ?? 0} total rows
                 </div>
                 <div className="flex w-full min-w-0 flex-col gap-2 @[28rem]:w-auto @[28rem]:max-w-none @[28rem]:flex-row @[28rem]:flex-wrap @[28rem]:items-center @[28rem]:justify-end">
                   <Select
                     value={String(pageSize)}
-                    onValueChange={value => {
+                    onValueChange={(value) => {
                       setPageSize(Number(value));
                       setPageIndex(0);
                     }}
@@ -1146,23 +1233,23 @@ export function App() {
                       <PaginationItem>
                         <PaginationPrevious
                           href="#"
-                          onClick={event => {
+                          onClick={(event) => {
                             event.preventDefault();
                             if (pageIndex > 0) {
-                              setPageIndex(current => current - 1);
+                              setPageIndex((current) => current - 1);
                             }
                           }}
                           className={cn(pageIndex <= 0 && "pointer-events-none opacity-50")}
                         />
                       </PaginationItem>
 
-                      {paginationTokens.map(token => (
+                      {paginationTokens.map((token) => (
                         <PaginationItem key={typeof token === "number" ? `page-${token}` : token}>
                           {typeof token === "number" ? (
                             <PaginationLink
                               href="#"
                               isActive={token === currentPage}
-                              onClick={event => {
+                              onClick={(event) => {
                                 event.preventDefault();
                                 setPageIndex(token - 1);
                               }}
@@ -1178,13 +1265,15 @@ export function App() {
                       <PaginationItem>
                         <PaginationNext
                           href="#"
-                          onClick={event => {
+                          onClick={(event) => {
                             event.preventDefault();
                             if (pageIndex < totalPages - 1) {
-                              setPageIndex(current => current + 1);
+                              setPageIndex((current) => current + 1);
                             }
                           }}
-                          className={cn(pageIndex >= totalPages - 1 && "pointer-events-none opacity-50")}
+                          className={cn(
+                            pageIndex >= totalPages - 1 && "pointer-events-none opacity-50",
+                          )}
                         />
                       </PaginationItem>
                     </PaginationContent>
@@ -1219,29 +1308,42 @@ export function App() {
                   ) : (
                     <div className="flex flex-col gap-5">
                       <section className="rounded-lg border border-border/70 bg-background/60 p-4">
-                        <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Table Details</h3>
+                        <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                          Table Details
+                        </h3>
                         <div className="space-y-1 text-sm">
                           <p>
-                            <span className="text-muted-foreground">Name:</span> {selectedTableInfo?.name ?? "—"}
+                            <span className="text-muted-foreground">Name:</span>{" "}
+                            {selectedTableInfo?.name ?? "—"}
                           </p>
                           <p>
-                            <span className="text-muted-foreground">Type:</span> {selectedTableInfo?.type ?? "—"}
+                            <span className="text-muted-foreground">Type:</span>{" "}
+                            {selectedTableInfo?.type ?? "—"}
                           </p>
                           <p>
-                            <span className="text-muted-foreground">Columns:</span> {selectedTableInfo?.columns.length ?? 0}
+                            <span className="text-muted-foreground">Columns:</span>{" "}
+                            {selectedTableInfo?.columns.length ?? 0}
                           </p>
                           <p>
                             <span className="text-muted-foreground">Rows:</span>{" "}
-                            {selectedTableInfo?.rowCount == null ? "n/a" : selectedTableInfo.rowCount.toLocaleString()}
+                            {selectedTableInfo?.rowCount == null
+                              ? "n/a"
+                              : selectedTableInfo.rowCount.toLocaleString()}
                           </p>
                         </div>
                       </section>
 
                       <section className="rounded-lg border border-border/70 bg-background/60 p-4">
-                        <h3 className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Columns</h3>
+                        <h3 className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                          Columns
+                        </h3>
                         <div className="flex flex-wrap gap-2">
-                          {(selectedTableInfo?.columns ?? []).map(column => (
-                            <Badge key={column.name} variant={column.pk ? "default" : "secondary"} className="font-mono text-xs">
+                          {(selectedTableInfo?.columns ?? []).map((column) => (
+                            <Badge
+                              key={column.name}
+                              variant={column.pk ? "default" : "secondary"}
+                              className="font-mono text-xs"
+                            >
                               {column.name}: {column.type || "unknown"}
                             </Badge>
                           ))}
@@ -1249,18 +1351,25 @@ export function App() {
                       </section>
 
                       <section className="rounded-lg border border-border/70 bg-background/60 p-4">
-                        <h3 className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Foreign Keys</h3>
+                        <h3 className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                          Foreign Keys
+                        </h3>
                         {(ddlResponse?.foreignKeys.length ?? 0) === 0 ? (
                           <p className="text-sm text-muted-foreground">No foreign keys parsed.</p>
                         ) : (
                           <div className="space-y-2">
                             {ddlResponse?.foreignKeys.map((foreignKey, index) => (
-                              <div key={`${foreignKey.toTable}-${index}`} className="rounded-md border border-border/60 bg-muted/30 p-2 text-xs">
+                              <div
+                                key={`${foreignKey.toTable}-${index}`}
+                                className="rounded-md border border-border/60 bg-muted/30 p-2 text-xs"
+                              >
                                 <div className="font-mono">
-                                  ({foreignKey.from.join(", ")}) → {foreignKey.toTable}({foreignKey.toColumns.join(", ")})
+                                  ({foreignKey.from.join(", ")}) → {foreignKey.toTable}(
+                                  {foreignKey.toColumns.join(", ")})
                                 </div>
                                 <div className="mt-1 text-muted-foreground">
-                                  ON DELETE {foreignKey.onDelete ?? "—"} · ON UPDATE {foreignKey.onUpdate ?? "—"}
+                                  ON DELETE {foreignKey.onDelete ?? "—"} · ON UPDATE{" "}
+                                  {foreignKey.onUpdate ?? "—"}
                                 </div>
                               </div>
                             ))}
@@ -1269,13 +1378,17 @@ export function App() {
                       </section>
 
                       <section className="rounded-lg border border-border/70 bg-background/60 p-4">
-                        <h3 className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Selected Row Object</h3>
+                        <h3 className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                          Selected Row Object
+                        </h3>
                         {selectedRow ? (
                           <pre className="max-h-[260px] overflow-auto rounded-md bg-muted/50 p-3 text-xs whitespace-pre-wrap break-words">
                             {JSON.stringify(selectedRow, null, 2)}
                           </pre>
                         ) : (
-                          <p className="text-sm text-muted-foreground">Select a row in the data grid to inspect it here.</p>
+                          <p className="text-sm text-muted-foreground">
+                            Select a row in the data grid to inspect it here.
+                          </p>
                         )}
                       </section>
                     </div>
@@ -1287,7 +1400,7 @@ export function App() {
                 <ScrollArea className="h-[calc(100vh-172px)] min-w-0 px-4 py-4">
                   <div className="flex min-w-0 flex-col gap-3">
                     {indicesResponse?.indices.length ? (
-                      indicesResponse.indices.map(indexEntry => (
+                      indicesResponse.indices.map((indexEntry) => (
                         <section
                           key={indexEntry.name}
                           className="min-w-0 max-w-full rounded-lg border border-border/70 bg-background/60 p-4"
@@ -1298,7 +1411,10 @@ export function App() {
                                 {indexEntry.name}
                               </p>
                             </div>
-                            <Badge className="shrink-0" variant={indexEntry.unique ? "default" : "secondary"}>
+                            <Badge
+                              className="shrink-0"
+                              variant={indexEntry.unique ? "default" : "secondary"}
+                            >
                               {indexEntry.unique ? "UNIQUE" : "INDEX"}
                             </Badge>
                           </div>
@@ -1314,7 +1430,9 @@ export function App() {
                         </section>
                       ))
                     ) : (
-                      <p className="text-sm text-muted-foreground">No indices detected for this table.</p>
+                      <p className="text-sm text-muted-foreground">
+                        No indices detected for this table.
+                      </p>
                     )}
                   </div>
                 </ScrollArea>
@@ -1324,7 +1442,9 @@ export function App() {
                 <ScrollArea className="h-[calc(100vh-172px)] min-w-0 px-4 py-4">
                   <section className="min-w-0 rounded-lg border border-border/70 bg-background/60 p-4">
                     <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
-                      <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">DDL</h3>
+                      <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                        DDL
+                      </h3>
                       <Button
                         type="button"
                         variant="outline"
@@ -1339,7 +1459,9 @@ export function App() {
                         ) : (
                           <CopyIcon className="size-3.5" aria-hidden />
                         )}
-                        <span className="sr-only">{ddlCopyFeedback ? "Copied to clipboard" : "Copy DDL"}</span>
+                        <span className="sr-only">
+                          {ddlCopyFeedback ? "Copied to clipboard" : "Copy DDL"}
+                        </span>
                       </Button>
                     </div>
                     <pre className="max-h-[420px] overflow-auto rounded-md bg-muted/50 p-3 text-xs whitespace-pre-wrap break-words">
@@ -1347,17 +1469,21 @@ export function App() {
                     </pre>
                   </section>
                   <section className="mt-4 rounded-lg border border-border/70 bg-background/60 p-4">
-                    <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Custom Types</h3>
+                    <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      Custom Types
+                    </h3>
                     {meta?.customTypes.length ? (
                       <div className="flex flex-wrap gap-2">
-                        {meta.customTypes.map(customType => (
+                        {meta.customTypes.map((customType) => (
                           <Badge key={customType} variant="secondary">
                             {customType}
                           </Badge>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No custom types from PRAGMA list_types (not exposed for local files).</p>
+                      <p className="text-sm text-muted-foreground">
+                        No custom types from PRAGMA list_types (not exposed for local files).
+                      </p>
                     )}
                   </section>
                 </ScrollArea>
@@ -1377,12 +1503,20 @@ export function App() {
           <CommandPrimitive className="overflow-hidden rounded-lg border border-border/60 bg-background">
             <div className="flex items-center border-b px-3">
               <SearchIcon className="size-4 text-muted-foreground" />
-              <CommandPrimitive.Input className="h-11 w-full border-0 bg-transparent px-3 text-sm outline-none" placeholder="Type a command or table name..." />
+              <CommandPrimitive.Input
+                className="h-11 w-full border-0 bg-transparent px-3 text-sm outline-none"
+                placeholder="Type a command or table name..."
+              />
             </div>
             <CommandPrimitive.List className="max-h-[380px] overflow-auto p-2">
-              <CommandPrimitive.Empty className="p-4 text-sm text-muted-foreground">No matching command.</CommandPrimitive.Empty>
+              <CommandPrimitive.Empty className="p-4 text-sm text-muted-foreground">
+                No matching command.
+              </CommandPrimitive.Empty>
 
-              <CommandPrimitive.Group heading="Navigation" className="px-2 py-2 text-xs text-muted-foreground">
+              <CommandPrimitive.Group
+                heading="Navigation"
+                className="px-2 py-2 text-xs text-muted-foreground"
+              >
                 <CommandPrimitive.Item
                   onSelect={() => {
                     setQuerySheetOpen(true);
@@ -1405,10 +1539,13 @@ export function App() {
 
               <CommandPrimitive.Separator className="my-2 h-px bg-border" />
 
-              <CommandPrimitive.Group heading="Tables" className="px-2 py-2 text-xs text-muted-foreground">
+              <CommandPrimitive.Group
+                heading="Tables"
+                className="px-2 py-2 text-xs text-muted-foreground"
+              >
                 {schema
-                  .filter(item => item.type === "table")
-                  .map(item => (
+                  .filter((item) => item.type === "table")
+                  .map((item) => (
                     <CommandPrimitive.Item
                       key={item.name}
                       onSelect={() => {
@@ -1432,7 +1569,7 @@ export function App() {
 
       <Dialog
         open={themeDialogOpen}
-        onOpenChange={open => {
+        onOpenChange={(open) => {
           setThemeDialogOpen(open);
           if (!open) {
             setThemeError(null);
@@ -1452,13 +1589,13 @@ export function App() {
               <Input
                 id="theme-preset"
                 value={themePreset}
-                onChange={event => setThemePreset(event.target.value)}
+                onChange={(event) => setThemePreset(event.target.value)}
                 placeholder="b3RrIFD3A or --preset b3RrIFD3A"
                 autoComplete="off"
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-                onKeyDown={event => {
+                onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
                     void saveThemePreset();
@@ -1488,7 +1625,11 @@ export function App() {
           </div>
 
           <DialogFooter showCloseButton>
-            <Button variant="ghost" onClick={() => void resetThemePreset()} disabled={themeSaving || themeResetting}>
+            <Button
+              variant="ghost"
+              onClick={() => void resetThemePreset()}
+              disabled={themeSaving || themeResetting}
+            >
               {themeResetting ? "Resetting..." : "Reset"}
             </Button>
             <Button onClick={() => void saveThemePreset()} disabled={themeSaving || themeResetting}>
@@ -1508,10 +1649,7 @@ export function App() {
             <SheetDescription>Run SQL queries and inspect the results.</SheetDescription>
           </SheetHeader>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 pt-12">
-            <div
-              ref={sqlWorkspaceRowRef}
-              className="flex min-h-0 w-full min-w-0 flex-1 flex-row"
-            >
+            <div ref={sqlWorkspaceRowRef} className="flex min-h-0 w-full min-w-0 flex-1 flex-row">
               <div
                 className="flex min-h-0 min-w-0 flex-col rounded-lg border border-border/70"
                 style={{
@@ -1522,28 +1660,28 @@ export function App() {
                   maxWidth: "80%",
                 }}
               >
-              <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
-                <p className="text-sm font-medium">Query Editor</p>
-                <Button size="sm" onClick={() => void runQuery()} disabled={queryRunning}>
-                  <PlayIcon data-icon="inline-start" />
-                  {queryRunning ? "Running..." : "Execute"}
-                </Button>
-              </div>
-              {queryAllowWrite && (
-                <p className="border-b border-amber-500/25 bg-amber-500/10 px-3 py-1.5 text-[11px] leading-snug text-amber-100/90">
-                  Read/write mode: DDL and data changes are allowed for this workspace.
-                </p>
-              )}
-              <div className="min-h-0 flex-1 overflow-hidden">
-                <CodeMirror
-                  value={querySql}
-                  height="100%"
-                  theme="dark"
-                  extensions={sqlEditorExtensions}
-                  onChange={value => setQuerySql(value)}
-                  basicSetup={sqlEditorBasicSetup}
-                />
-              </div>
+                <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
+                  <p className="text-sm font-medium">Query Editor</p>
+                  <Button size="sm" onClick={() => void runQuery()} disabled={queryRunning}>
+                    <PlayIcon data-icon="inline-start" />
+                    {queryRunning ? "Running..." : "Execute"}
+                  </Button>
+                </div>
+                {queryAllowWrite && (
+                  <p className="border-b border-amber-500/25 bg-amber-500/10 px-3 py-1.5 text-[11px] leading-snug text-amber-100/90">
+                    Read/write mode: DDL and data changes are allowed for this workspace.
+                  </p>
+                )}
+                <div className="min-h-0 flex-1 overflow-hidden">
+                  <CodeMirror
+                    value={querySql}
+                    height="100%"
+                    theme="dark"
+                    extensions={sqlEditorExtensions}
+                    onChange={(value) => setQuerySql(value)}
+                    basicSetup={sqlEditorBasicSetup}
+                  />
+                </div>
               </div>
 
               <div
@@ -1564,153 +1702,181 @@ export function App() {
                   maxWidth: "80%",
                 }}
               >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">Query Result</p>
-                  {queryResult && (
-                    <p className="text-xs text-muted-foreground">
-                      {queryResult.rows.length} rows · {queryResult.durationMs.toFixed(2)} ms
-                    </p>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Query Result</p>
+                    {queryResult && (
+                      <p className="text-xs text-muted-foreground">
+                        {queryResult.rows.length} rows · {queryResult.durationMs.toFixed(2)} ms
+                      </p>
+                    )}
+                  </div>
+                  {queryResult && queryResult.columns.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <DownloadIcon data-icon="inline-start" />
+                          Export
+                          <ChevronDownIcon data-icon="inline-end" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => void copyQueryResultAsTsv()}>
+                          Copy as Excel (TSV)
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => exportQueryResult("csv")}>
+                          Download CSV
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => exportQueryResult("json")}>
+                          Download JSON
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </div>
-                {queryResult && queryResult.columns.length > 0 && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <DownloadIcon data-icon="inline-start" />
-                        Export
-                        <ChevronDownIcon data-icon="inline-end" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => void copyQueryResultAsTsv()}>Copy as Excel (TSV)</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => exportQueryResult("csv")}>Download CSV</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => exportQueryResult("json")}>Download JSON</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
 
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                <div className="min-h-0 flex-1 overflow-auto p-3">
-                  {queryError ? (
-                    <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{queryError}</p>
-                  ) : queryResult ? (
-                    queryResult.columns.length > 0 ? (
-                      <div className="overflow-auto rounded-md border border-border/60">
-                        <table className="w-full text-sm">
-                          <thead className="bg-muted/40">
-                            <tr>
-                              {queryResult.columns.map(column => (
-                                <th key={column} className="border-b border-r border-border/60 px-2 py-1.5 text-left font-medium last:border-r-0">
-                                  {column}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {queryResultPageRows.map((row, rowIndex) => {
-                              const absoluteIndex = queryResultPageIndex * queryResultPageSize + rowIndex;
-                              return (
-                                <tr key={`result-row-${absoluteIndex}`} className="odd:bg-muted/20">
-                                  {queryResult.columns.map(column => (
-                                    <td key={`${absoluteIndex}-${column}`} className="max-w-[260px] truncate border-b border-r border-border/50 px-2 py-1.5 last:border-r-0">
-                                      {String(row[column] ?? "null")}
-                                    </td>
-                                  ))}
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <div className="min-h-0 flex-1 overflow-auto p-3">
+                    {queryError ? (
+                      <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+                        {queryError}
+                      </p>
+                    ) : queryResult ? (
+                      queryResult.columns.length > 0 ? (
+                        <div className="overflow-auto rounded-md border border-border/60">
+                          <table className="w-full text-sm">
+                            <thead className="bg-muted/40">
+                              <tr>
+                                {queryResult.columns.map((column) => (
+                                  <th
+                                    key={column}
+                                    className="border-b border-r border-border/60 px-2 py-1.5 text-left font-medium last:border-r-0"
+                                  >
+                                    {column}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {queryResultPageRows.map((row, rowIndex) => {
+                                const absoluteIndex =
+                                  queryResultPageIndex * queryResultPageSize + rowIndex;
+                                return (
+                                  <tr
+                                    key={`result-row-${absoluteIndex}`}
+                                    className="odd:bg-muted/20"
+                                  >
+                                    {queryResult.columns.map((column) => (
+                                      <td
+                                        key={`${absoluteIndex}-${column}`}
+                                        className="max-w-[260px] truncate border-b border-r border-border/50 px-2 py-1.5 last:border-r-0"
+                                      >
+                                        {String(row[column] ?? "null")}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Statement completed. {queryResult.rowsAffected} rows affected.
+                        </p>
+                      )
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        Statement completed. {queryResult.rowsAffected} rows affected.
+                        Run a SQL command to view result data here.
                       </p>
-                    )
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Run a SQL command to view result data here.</p>
+                    )}
+                  </div>
+
+                  {queryResult && queryResult.columns.length > 0 && queryResultRowCount > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border/70 px-3 py-2 text-sm">
+                      <div className="min-w-0 shrink text-muted-foreground">
+                        Page {queryResultCurrentPage} / {queryResultTotalPages} ·{" "}
+                        {queryResultRowCount.toLocaleString()} rows
+                      </div>
+                      <div className="flex w-full min-w-0 flex-col gap-2 @[28rem]:w-auto @[28rem]:max-w-none @[28rem]:flex-row @[28rem]:flex-wrap @[28rem]:items-center @[28rem]:justify-end">
+                        <Select
+                          value={String(queryResultPageSize)}
+                          onValueChange={(value) => {
+                            setQueryResultPageSize(Number(value));
+                            setQueryResultPageIndex(0);
+                          }}
+                        >
+                          <SelectTrigger className="h-8 w-[90px] shrink-0 self-start @[28rem]:self-center">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                            <SelectItem value="200">200</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Pagination className="mx-0 w-full min-w-0 max-w-full justify-start overflow-x-auto overflow-y-hidden @[28rem]:w-auto">
+                          <PaginationContent>
+                            <PaginationItem>
+                              <PaginationPrevious
+                                href="#"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  if (queryResultPageIndex > 0) {
+                                    setQueryResultPageIndex((current) => current - 1);
+                                  }
+                                }}
+                                className={cn(
+                                  queryResultPageIndex <= 0 && "pointer-events-none opacity-50",
+                                )}
+                              />
+                            </PaginationItem>
+
+                            {queryResultPaginationTokens.map((token) => (
+                              <PaginationItem
+                                key={typeof token === "number" ? `qr-page-${token}` : token}
+                              >
+                                {typeof token === "number" ? (
+                                  <PaginationLink
+                                    href="#"
+                                    isActive={token === queryResultCurrentPage}
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      setQueryResultPageIndex(token - 1);
+                                    }}
+                                  >
+                                    {token}
+                                  </PaginationLink>
+                                ) : (
+                                  <PaginationEllipsis />
+                                )}
+                              </PaginationItem>
+                            ))}
+
+                            <PaginationItem>
+                              <PaginationNext
+                                href="#"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  if (queryResultPageIndex < queryResultTotalPages - 1) {
+                                    setQueryResultPageIndex((current) => current + 1);
+                                  }
+                                }}
+                                className={cn(
+                                  queryResultPageIndex >= queryResultTotalPages - 1 &&
+                                    "pointer-events-none opacity-50",
+                                )}
+                              />
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                      </div>
+                    </div>
                   )}
                 </div>
-
-                {queryResult && queryResult.columns.length > 0 && queryResultRowCount > 0 && (
-                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border/70 px-3 py-2 text-sm">
-                    <div className="min-w-0 shrink text-muted-foreground">
-                      Page {queryResultCurrentPage} / {queryResultTotalPages} · {queryResultRowCount.toLocaleString()} rows
-                    </div>
-                    <div className="flex w-full min-w-0 flex-col gap-2 @[28rem]:w-auto @[28rem]:max-w-none @[28rem]:flex-row @[28rem]:flex-wrap @[28rem]:items-center @[28rem]:justify-end">
-                      <Select
-                        value={String(queryResultPageSize)}
-                        onValueChange={value => {
-                          setQueryResultPageSize(Number(value));
-                          setQueryResultPageIndex(0);
-                        }}
-                      >
-                        <SelectTrigger className="h-8 w-[90px] shrink-0 self-start @[28rem]:self-center">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="25">25</SelectItem>
-                          <SelectItem value="50">50</SelectItem>
-                          <SelectItem value="100">100</SelectItem>
-                          <SelectItem value="200">200</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Pagination className="mx-0 w-full min-w-0 max-w-full justify-start overflow-x-auto overflow-y-hidden @[28rem]:w-auto">
-                        <PaginationContent>
-                          <PaginationItem>
-                            <PaginationPrevious
-                              href="#"
-                              onClick={event => {
-                                event.preventDefault();
-                                if (queryResultPageIndex > 0) {
-                                  setQueryResultPageIndex(current => current - 1);
-                                }
-                              }}
-                              className={cn(queryResultPageIndex <= 0 && "pointer-events-none opacity-50")}
-                            />
-                          </PaginationItem>
-
-                          {queryResultPaginationTokens.map(token => (
-                            <PaginationItem key={typeof token === "number" ? `qr-page-${token}` : token}>
-                              {typeof token === "number" ? (
-                                <PaginationLink
-                                  href="#"
-                                  isActive={token === queryResultCurrentPage}
-                                  onClick={event => {
-                                    event.preventDefault();
-                                    setQueryResultPageIndex(token - 1);
-                                  }}
-                                >
-                                  {token}
-                                </PaginationLink>
-                              ) : (
-                                <PaginationEllipsis />
-                              )}
-                            </PaginationItem>
-                          ))}
-
-                          <PaginationItem>
-                            <PaginationNext
-                              href="#"
-                              onClick={event => {
-                                event.preventDefault();
-                                if (queryResultPageIndex < queryResultTotalPages - 1) {
-                                  setQueryResultPageIndex(current => current + 1);
-                                }
-                              }}
-                              className={cn(queryResultPageIndex >= queryResultTotalPages - 1 && "pointer-events-none opacity-50")}
-                            />
-                          </PaginationItem>
-                        </PaginationContent>
-                      </Pagination>
-                    </div>
-                  </div>
-                )}
               </div>
-            </div>
             </div>
           </div>
         </SheetContent>

@@ -78,16 +78,19 @@ type DbResult = {
 /**
  * Adapter: Turso `Database` + `prepare` / `all` / `run` → `{ columns, rows, rowsAffected }` for API handlers.
  */
-async function dbExecute(db: Database, stmt: string | { sql: string; args?: unknown[] }): Promise<DbResult> {
+async function dbExecute(
+  db: Database,
+  stmt: string | { sql: string; args?: unknown[] },
+): Promise<DbResult> {
   const sql = typeof stmt === "string" ? stmt : stmt.sql;
-  const args = typeof stmt === "string" ? [] : stmt.args ?? [];
+  const args = typeof stmt === "string" ? [] : (stmt.args ?? []);
   const prepared = db.prepare(sql);
   try {
     const meta = prepared.columns();
-    const columnNames = meta.map(c => c.name);
+    const columnNames = meta.map((c) => c.name);
     if (columnNames.length > 0) {
       const rawRows = await prepared.all(...args);
-      const rows = rawRows.map(r => {
+      const rows = rawRows.map((r) => {
         const row = r as Record<string, unknown>;
         const out: Record<string, unknown> = {};
         for (const name of columnNames) {
@@ -160,7 +163,7 @@ const server = serve({
       }),
     },
     "/api/tables/:name/columns": {
-      GET: withApi(async req => {
+      GET: withApi(async (req) => {
         const tableNameParam = req.params.name;
         if (!tableNameParam) {
           return json({ error: "Table name is required" }, 400);
@@ -171,7 +174,7 @@ const server = serve({
       }),
     },
     "/api/tables/:name/rows": {
-      GET: withApi(async req => {
+      GET: withApi(async (req) => {
         const tableNameParam = req.params.name;
         if (!tableNameParam) {
           return json({ error: "Table name is required" }, 400);
@@ -184,7 +187,9 @@ const server = serve({
         const filters = parseJsonSafe<FilterInput[]>(url.searchParams.get("filters")) ?? [];
 
         const { whereSql, args } = buildWhereClause(filters);
-        const orderBySql = sort?.id ? ` ORDER BY ${quoteIdentifier(sort.id)} ${sort.desc ? "DESC" : "ASC"}` : "";
+        const orderBySql = sort?.id
+          ? ` ORDER BY ${quoteIdentifier(sort.id)} ${sort.desc ? "DESC" : "ASC"}`
+          : "";
 
         const rowsResult = await dbExecute(db, {
           sql: `SELECT * FROM ${quoteIdentifier(tableName)}${whereSql}${orderBySql} LIMIT ? OFFSET ?`,
@@ -211,7 +216,7 @@ const server = serve({
       }),
     },
     "/api/tables/:name/ddl": {
-      GET: withApi(async req => {
+      GET: withApi(async (req) => {
         const tableNameParam = req.params.name;
         if (!tableNameParam) {
           return json({ error: "Table name is required" }, 400);
@@ -242,16 +247,18 @@ const server = serve({
       }),
     },
     "/api/tables/:name/indices": {
-      GET: withApi(async req => {
+      GET: withApi(async (req) => {
         const tableNameParam = req.params.name;
         if (!tableNameParam) {
           return json({ error: "Table name is required" }, 400);
         }
         const tableName = decodeURIComponent(tableNameParam);
         const indexList = await dbExecute(db, `PRAGMA index_list(${quoteIdentifier(tableName)})`);
-        const visibleIndexes = indexList.rows.filter(row => !isInternalSchemaObjectName(String(row.name ?? "")));
+        const visibleIndexes = indexList.rows.filter(
+          (row) => !isInternalSchemaObjectName(String(row.name ?? "")),
+        );
         const indices = await Promise.all(
-          visibleIndexes.map(async indexRow => {
+          visibleIndexes.map(async (indexRow) => {
             const indexName = String(indexRow.name ?? "");
             let indexSql: DbResult = { columns: [], rows: [], rowsAffected: 0 };
             let columnsResult: DbResult = { columns: [], rows: [], rowsAffected: 0 };
@@ -260,7 +267,10 @@ const server = serve({
                 sql: "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?",
                 args: [indexName],
               });
-              columnsResult = await dbExecute(db, `PRAGMA index_info(${quoteIdentifier(indexName)})`);
+              columnsResult = await dbExecute(
+                db,
+                `PRAGMA index_info(${quoteIdentifier(indexName)})`,
+              );
             } catch {
               // Rare: internal index slipped through or schema edge case
             }
@@ -270,7 +280,7 @@ const server = serve({
               origin: String(indexRow.origin ?? "unknown"),
               partial: Boolean(indexRow.partial),
               sql: (indexSql.rows[0]?.sql as string | null | undefined) ?? null,
-              columns: columnsResult.rows.map(item => String(item.name ?? "")),
+              columns: columnsResult.rows.map((item) => String(item.name ?? "")),
             };
           }),
         );
@@ -282,7 +292,7 @@ const server = serve({
       }),
     },
     "/api/query": {
-      POST: withApi(async req => {
+      POST: withApi(async (req) => {
         const body = await parseJsonBody<{ sql?: string; allowWrite?: boolean }>(req);
         const sqlText = body.sql?.trim() ?? "";
         const allowWrite = body.allowWrite === true;
@@ -311,7 +321,7 @@ const server = serve({
         const css = await readPersistedThemeCss();
         return json({ css });
       }),
-      POST: withApi(async req => {
+      POST: withApi(async (req) => {
         const body = await parseJsonBody<{ preset?: string }>(req);
         const preset = normalizeThemePreset(body.preset);
 
@@ -335,7 +345,7 @@ const server = serve({
       }),
     },
     "/api/export": {
-      POST: withApi(async req => {
+      POST: withApi(async (req) => {
         const body = await parseJsonBody<{
           table?: string;
           format?: "csv" | "json";
@@ -351,9 +361,14 @@ const server = serve({
         const format = body.format === "json" ? "json" : "csv";
         const limit = clampInt(String(body.limit ?? 1000), 1000, 1, 10000);
         const sort = body.sort?.[0];
-        const orderBySql = sort?.id ? ` ORDER BY ${quoteIdentifier(sort.id)} ${sort.desc ? "DESC" : "ASC"}` : "";
+        const orderBySql = sort?.id
+          ? ` ORDER BY ${quoteIdentifier(sort.id)} ${sort.desc ? "DESC" : "ASC"}`
+          : "";
 
-        const result = await dbExecute(db, `SELECT * FROM ${quoteIdentifier(tableName)}${orderBySql} LIMIT ${limit}`);
+        const result = await dbExecute(
+          db,
+          `SELECT * FROM ${quoteIdentifier(tableName)}${orderBySql} LIMIT ${limit}`,
+        );
         const rows = result.rows.map(normalizeRow);
         const baseName = `${tableName}-${Date.now()}`;
 
@@ -510,7 +525,7 @@ async function findAvailablePort(host: string, startPort: number): Promise<numbe
 }
 
 function isPortFree(host: string, port: number): Promise<boolean> {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const probe = createServer();
     probe.unref();
     probe.on("error", () => resolve(false));
@@ -539,7 +554,12 @@ function parseJsonSafe<T>(value: string | null): T | null {
   }
 }
 
-function clampInt(value: string | null, fallback: number, minimum: number, maximum: number): number {
+function clampInt(
+  value: string | null,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
   const numeric = Number.parseInt(String(value ?? ""), 10);
   if (!Number.isFinite(numeric)) {
     return fallback;
@@ -548,7 +568,7 @@ function clampInt(value: string | null, fallback: number, minimum: number, maxim
 }
 
 function quoteIdentifier(identifier: string): string {
-  return `"${identifier.replaceAll("\"", "\"\"")}"`;
+  return `"${identifier.replaceAll('"', '""')}"`;
 }
 
 function isReadonlyQuery(sql: string): boolean {
@@ -556,7 +576,7 @@ function isReadonlyQuery(sql: string): boolean {
 }
 
 function buildWhereClause(filters: FilterInput[]): { whereSql: string; args: string[] } {
-  const normalizedFilters = filters.filter(item => item.id && item.value.trim().length > 0);
+  const normalizedFilters = filters.filter((item) => item.id && item.value.trim().length > 0);
   if (normalizedFilters.length === 0) {
     return {
       whereSql: "",
@@ -611,7 +631,7 @@ async function readSchema(client: Database): Promise<SchemaObject[]> {
   );
 
   const objects = await Promise.all(
-    listResult.rows.map(async row => {
+    listResult.rows.map(async (row) => {
       const name = String(row.name ?? "");
       const type = row.type === "view" ? "view" : "table";
       const sql: string | null = null;
@@ -620,7 +640,10 @@ async function readSchema(client: Database): Promise<SchemaObject[]> {
       let rowCount: number | null = null;
       if (type === "table") {
         try {
-          const countResult = await dbExecute(client, `SELECT COUNT(*) AS total FROM ${quoteIdentifier(name)}`);
+          const countResult = await dbExecute(
+            client,
+            `SELECT COUNT(*) AS total FROM ${quoteIdentifier(name)}`,
+          );
           const countValue = countResult.rows[0]?.total;
           rowCount = typeof countValue === "number" ? countValue : Number(countValue ?? 0);
         } catch {
@@ -644,7 +667,7 @@ async function readSchema(client: Database): Promise<SchemaObject[]> {
 
 async function readTableColumns(client: Database, tableName: string): Promise<TableColumn[]> {
   const result = await dbExecute(client, `PRAGMA table_info(${quoteIdentifier(tableName)})`);
-  return result.rows.map(row => ({
+  return result.rows.map((row) => ({
     cid: Number(row.cid ?? 0),
     name: String(row.name ?? ""),
     type: String(row.type ?? ""),
@@ -657,16 +680,16 @@ async function readTableColumns(client: Database, tableName: string): Promise<Ta
 function parseForeignKeysFromCreate(createStatement: string): ForeignKeyInfo[] {
   const found: ForeignKeyInfo[] = [];
   const regex =
-    /FOREIGN\s+KEY\s*\(([^)]+)\)\s*REFERENCES\s+("?[A-Za-z0-9_\.]+"?)\s*\(([^)]+)\)\s*(?:ON\s+DELETE\s+(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT))?\s*(?:ON\s+UPDATE\s+(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT))?/gi;
+    /FOREIGN\s+KEY\s*\(([^)]+)\)\s*REFERENCES\s+("?[A-Za-z0-9_.]+"?)\s*\(([^)]+)\)\s*(?:ON\s+DELETE\s+(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT))?\s*(?:ON\s+UPDATE\s+(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT))?/gi;
 
   for (const match of createStatement.matchAll(regex)) {
     const from = match[1]
       ?.split(",")
-      .map(value => value.trim().replaceAll('"', ""))
+      .map((value) => value.trim().replaceAll('"', ""))
       .filter(Boolean);
     const toColumns = match[3]
       ?.split(",")
-      .map(value => value.trim().replaceAll('"', ""))
+      .map((value) => value.trim().replaceAll('"', ""))
       .filter(Boolean);
 
     found.push({
@@ -692,7 +715,7 @@ function toCsv(columns: string[], rows: Record<string, unknown>[]): string {
 
   const lines = [columns.join(",")];
   for (const row of rows) {
-    lines.push(columns.map(column => escape(row[column])).join(","));
+    lines.push(columns.map((column) => escape(row[column])).join(","));
   }
   return lines.join("\n");
 }
@@ -712,7 +735,10 @@ function openBrowser(url: string) {
 }
 
 function normalizeThemePreset(preset: string | undefined): string {
-  return (preset ?? "").trim().replace(/^--preset\s+/i, "").trim();
+  return (preset ?? "")
+    .trim()
+    .replace(/^--preset\s+/i, "")
+    .trim();
 }
 
 async function readPersistedThemeCss(): Promise<string | null> {

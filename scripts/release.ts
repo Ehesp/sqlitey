@@ -35,7 +35,9 @@ let nativeVersion: string;
 try {
   nativeVersion = await readTursoNativeVersion();
 } catch {
-  console.error("Run `bun install` before scripts/release.ts so node_modules/@tursodatabase/database exists.");
+  console.error(
+    "Run `bun install` before scripts/release.ts so node_modules/@tursodatabase/database exists.",
+  );
   process.exit(1);
 }
 
@@ -55,11 +57,14 @@ try {
       platform.startsWith("win32-") ? `sqlitey-${platform}.exe` : `sqlitey-${platform}`,
     );
 
-    const syncProc = Bun.spawn(["bun", "run", path.join(rootDir, "scripts/sync-turso-node-artifact.ts")], {
-      cwd: rootDir,
-      stdout: "inherit",
-      stderr: "inherit",
-    });
+    const syncProc = Bun.spawn(
+      ["bun", "run", path.join(rootDir, "scripts/sync-turso-node-artifact.ts")],
+      {
+        cwd: rootDir,
+        stdout: "inherit",
+        stderr: "inherit",
+      },
+    );
     await syncProc.exited;
 
     const unpatchTurso = await patchTursoDatabaseStaticRequire(rootDir);
@@ -100,7 +105,11 @@ try {
   releaseFailed = error;
   console.error("Release build failed:", error);
 } finally {
-  const reinstall = Bun.spawn(["bun", "install"], { cwd: rootDir, stdout: "inherit", stderr: "inherit" });
+  const reinstall = Bun.spawn(["bun", "install"], {
+    cwd: rootDir,
+    stdout: "inherit",
+    stderr: "inherit",
+  });
   await reinstall.exited;
 }
 

@@ -13,8 +13,8 @@ import path from "node:path";
 import { seedPerfDummy } from "./seed-50k";
 
 const argv = process.argv.slice(2);
-const fresh = argv.some(a => a === "--fresh" || a === "-f");
-const positional = argv.filter(a => !a.startsWith("-"));
+const fresh = argv.some((a) => a === "--fresh" || a === "-f");
+const positional = argv.filter((a) => !a.startsWith("-"));
 const dbPath = path.resolve(positional[0] ?? "./app.db");
 
 if (fresh) {

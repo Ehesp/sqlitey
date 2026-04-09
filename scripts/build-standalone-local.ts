@@ -34,7 +34,13 @@ if (!tursoPkg) {
   throw new Error(`No @tursodatabase/database native package mapped for ${bunTarget}`);
 }
 
-const databasePkgPath = path.join(rootDir, "node_modules", "@tursodatabase", "database", "package.json");
+const databasePkgPath = path.join(
+  rootDir,
+  "node_modules",
+  "@tursodatabase",
+  "database",
+  "package.json",
+);
 const databasePkg = JSON.parse(await fs.readFile(databasePkgPath, "utf8")) as {
   optionalDependencies?: Record<string, string>;
 };
@@ -47,11 +53,14 @@ const nativeVersion = rawVer.replace(/^[\^~]/, "");
 await fs.mkdir(distDir, { recursive: true });
 await ensureTursoNativePackage(rootDir, tursoPkg, nativeVersion);
 
-const syncProc = Bun.spawn(["bun", "run", path.join(rootDir, "scripts/sync-turso-node-artifact.ts")], {
-  cwd: rootDir,
-  stdout: "inherit",
-  stderr: "inherit",
-});
+const syncProc = Bun.spawn(
+  ["bun", "run", path.join(rootDir, "scripts/sync-turso-node-artifact.ts")],
+  {
+    cwd: rootDir,
+    stdout: "inherit",
+    stderr: "inherit",
+  },
+);
 await syncProc.exited;
 
 const platformSlug = bunTarget.replace(/^bun-/, "");

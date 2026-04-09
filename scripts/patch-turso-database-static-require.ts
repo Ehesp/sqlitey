@@ -10,9 +10,11 @@ import path from "node:path";
  * the driver reuses that binding.
  */
 const MARKER = "nativeBinding = requireNative()";
-const REPLACEMENT = "nativeBinding = globalThis[Symbol.for(\"turso.native.binding\")]";
+const REPLACEMENT = 'nativeBinding = globalThis[Symbol.for("turso.native.binding")]';
 
-export async function patchTursoDatabaseStaticRequire(rootDir: string): Promise<() => Promise<void>> {
+export async function patchTursoDatabaseStaticRequire(
+  rootDir: string,
+): Promise<() => Promise<void>> {
   const filePath = path.join(rootDir, "node_modules", "@tursodatabase", "database", "index.js");
   const original = await fs.readFile(filePath, "utf8");
   if (!original.includes(MARKER)) {
