@@ -24,4 +24,4 @@ You'll be provided a URL to go to, enjoy!
 
 ## Another...?!
 
-Yep. This was mainly built without looking at the code for a fun experiment in Cursor design mode. I wanted a very simple, no drama browser which just works. It uses Bun + React (Shadcn) compiled into a binary for easy distribution and minimal effort.  It uses the `@tursodatabase/database` driver to support Turso databases alongside SQLite.
+Yep. This was mainly built without looking at the code for a fun experiment in Cursor design mode. I wanted a very simple, no drama browser which just works. It uses Bun + React (Shadcn) compiled into a binary for easy distribution and minimal effort. It uses [`@libsql/client`](https://github.com/tursodatabase/libsql-client-ts) (libSQL) for local files and Turso-compatible databases.

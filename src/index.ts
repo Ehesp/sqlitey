@@ -542,7 +542,8 @@ async function listCustomTypes(client: ReturnType<typeof createClient>): Promise
 async function readSchema(client: ReturnType<typeof createClient>): Promise<SchemaObject[]> {
   const schemaRows = await client.execute(
     // Hide sqlite/system tables and libSQL-internal names (prefix used by some libSQL builds).
-    "SELECT name, type, sql FROM sqlite_schema WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '__turso_%' ORDER BY type, name",
+    // LIKE treats `_` as a single-char wildcard; use GLOB so `__turso_*` / `sqlite_*` match real prefixes.
+    "SELECT name, type, sql FROM sqlite_schema WHERE type IN ('table', 'view') AND name NOT GLOB 'sqlite_*' AND name NOT GLOB '__turso_*' ORDER BY type, name",
   );
 
   const objects = await Promise.all(
