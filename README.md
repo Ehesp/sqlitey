@@ -17,13 +17,13 @@ Install the binary with curl:
 curl -fsSL https://raw.githubusercontent.com/ehesp/sqlitey/main/install.sh | bash
 ```
 
+Then run the binary pointing to your local database:
+
 ```bash
 sqlitey path/to/file.db
 ```
 
-You'll be provided a URL to go to, enjoy!
-
-**Standalone** (`bun run compile:local` or `scripts/release.ts`): ship **`sqlitey-<os>-<arch>`** together with **`turso-<os>-<arch>.node`** in the same directory (also uploaded by CI). Legacy filename `turso.node` beside the binary still works. The N-API addon cannot live inside the single-file Bun executable.
+The browser will open on an available port automatically. Enjoy!
 
 ![Screenshot](.github/screenshot.png)
 
