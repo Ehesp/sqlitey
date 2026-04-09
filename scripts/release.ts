@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { ensureLibsqlNativePackage } from "./ensure-libsql-native-package";
 import { libsqlPackageForBunTarget } from "./libsql-embed-packages";
+import { patchLibsqlToStaticRequire } from "./patch-libsql-static-require";
 
 const rootDir = path.resolve(import.meta.dir, "..");
 const distDir = path.join(rootDir, "dist", "targets");
@@ -62,25 +63,30 @@ import "${libsqlPkg}";
       platform.startsWith("win32-") ? `sqlitey-${platform}.exe` : `sqlitey-${platform}`
     );
 
-    const buildProc = Bun.spawn(
-      [
-        "bun",
-        "build",
-        "src/index.ts",
-        "--compile",
-        `--target=${bunTarget}`,
-        "--outfile",
-        outfile,
-      ],
-      { cwd: rootDir, stdout: "inherit", stderr: "inherit" }
-    );
+    const unpatchLibsql = await patchLibsqlToStaticRequire(rootDir, libsqlPkg);
+    try {
+      const buildProc = Bun.spawn(
+        [
+          "bun",
+          "build",
+          "src/index.ts",
+          "--compile",
+          `--target=${bunTarget}`,
+          "--outfile",
+          outfile,
+        ],
+        { cwd: rootDir, stdout: "inherit", stderr: "inherit" }
+      );
 
-    const buildExit = await buildProc.exited;
-    if (buildExit !== 0) {
-      throw new Error(`Build failed for ${platform} (target: ${bunTarget}) with exit code ${buildExit}`);
+      const buildExit = await buildProc.exited;
+      if (buildExit !== 0) {
+        throw new Error(`Build failed for ${platform} (target: ${bunTarget}) with exit code ${buildExit}`);
+      }
+
+      console.log("Built", platform);
+    } finally {
+      await unpatchLibsql();
     }
-
-    console.log("Built", platform);
   }
 } catch (error) {
   releaseFailed = error;
