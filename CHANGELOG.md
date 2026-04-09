@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.3](https://github.com/Ehesp/sqlitey/compare/sqlitey-v0.5.2...sqlitey-v0.5.3) (2026-04-09)
+
+
+### Bug Fixes
+
+* **install:** validate Turso .node matches host OS/arch ([af2661a](https://github.com/Ehesp/sqlitey/commit/af2661a01298b7948bb451ef89e6a1000e236f17))
+* **release:** sync Turso .node for compile target, not CI host OS ([6e92b79](https://github.com/Ehesp/sqlitey/commit/6e92b79a0bc8f1a3e84e8b5509b2d9ff28fc0ca6))
+
 ## [0.5.2](https://github.com/Ehesp/sqlitey/compare/sqlitey-v0.5.1...sqlitey-v0.5.2) (2026-04-09)
 
 
