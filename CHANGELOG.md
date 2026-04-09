@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/Ehesp/sqlitey/compare/sqlitey-v0.4.0...sqlitey-v0.5.0) (2026-04-09)
+
+
+### Features
+
+* add persistent theming ([a69332e](https://github.com/Ehesp/sqlitey/commit/a69332e98f2f858f6c40a33d2fa759a6f5d6c9e7))
+
 ## [0.4.0](https://github.com/Ehesp/sqlitey/compare/sqlitey-v0.3.1...sqlitey-v0.4.0) (2026-04-09)
 
 
