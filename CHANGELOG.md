@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/Ehesp/sqlitey/compare/sqlitey-v0.5.1...sqlitey-v0.5.2) (2026-04-09)
+
+
+### Bug Fixes
+
+* resolve Turso sidecar when binary is named sqlitey ([f114be9](https://github.com/Ehesp/sqlitey/commit/f114be902a043637d9a17bfa46453f8ee8b4f296))
+
 ## [0.5.1](https://github.com/Ehesp/sqlitey/compare/sqlitey-v0.5.0...sqlitey-v0.5.1) (2026-04-09)
 
 

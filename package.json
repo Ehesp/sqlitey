@@ -1,6 +1,6 @@
 {
   "name": "sqlitey",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "description": "sqlitey — local SQLite database UI (@tursodatabase/database) with Bun",
   "bin": {
