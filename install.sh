@@ -27,6 +27,33 @@ need_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
 }
 
+# Turso .node must match host OS/arch (e.g. catch Linux ELF saved as turso-darwin-arm64.node).
+turso_native_matches_host() {
+  local f="$1"
+  [[ -f "$f" && -s "$f" ]] || return 1
+  command -v file >/dev/null 2>&1 || return 0
+  local ft
+  ft=$(file -b "$f" 2>/dev/null || true)
+  case "$(uname -s)" in
+    Darwin)
+      [[ "$ft" == *Mach-O* ]] || return 1
+      # Reject foreign objects (e.g. ELF mislabeled as darwin).
+      [[ "$ft" == *ELF* ]] && return 1
+      case "$(uname -m)" in
+        arm64|aarch64) [[ "$ft" == *arm64* ]] || [[ "$ft" == *aarch64* ]] || return 1 ;;
+        x86_64|amd64) [[ "$ft" == *x86_64* ]] || return 1 ;;
+      esac
+      ;;
+    Linux)
+      [[ "$ft" == *ELF* ]] || return 1
+      ;;
+    MINGW*|MSYS*|CYGWIN*)
+      [[ "$ft" == *PE32* ]] || [[ "$ft" == *PE32+* ]] || return 1
+      ;;
+  esac
+  return 0
+}
+
 # Pick newest non-draft release that already has both binaries (avoids empty "latest" during CI).
 resolve_release_with_assets() {
   local json="$1" asset_name="$2" turso_asset_name="$3"
@@ -331,9 +358,12 @@ main() {
 
   if [[ "$force" -eq 0 ]] && [[ -f "$VERSION_FILE" ]] && [[ "$(cat "$VERSION_FILE" 2>/dev/null || true)" == "$tag" ]]; then
     if [[ -x "$install_dir/$dest_name" ]] && [[ -f "$install_dir/$turso_asset_name" ]]; then
-      echo "sqlitey is already at latest ($tag) in $install_dir"
-      ensure_sqlitey_on_path "$install_dir" "$dest_name"
-      exit 0
+      if turso_native_matches_host "$install_dir/$turso_asset_name"; then
+        echo "sqlitey is already at latest ($tag) in $install_dir"
+        ensure_sqlitey_on_path "$install_dir" "$dest_name"
+        exit 0
+      fi
+      echo "install-sqlitey: replacing invalid $turso_asset_name (wrong OS/arch or corrupt); re-downloading ..." >&2
     fi
   fi
 
@@ -350,6 +380,7 @@ main() {
 
   echo "Downloading $turso_asset_name ($tag) ..."
   curl -fL --progress-bar -o "$dl2" "$turso_url" || die "download failed (turso native addon)"
+  turso_native_matches_host "$dl2" || die "downloaded $turso_asset_name does not match this OS/arch ($(file -b "$dl2")). Remove bad files and retry, or report a mislabeled release asset."
 
   if [[ "$asset_name" == *.exe ]]; then
     mv -f "$dl" "$install_dir/$dest_name"
