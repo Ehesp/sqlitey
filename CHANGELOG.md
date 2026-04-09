@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/Ehesp/sqlitey/compare/sqlitey-v0.5.0...sqlitey-v0.5.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* trigger patch release (docs-only changes did not bump version) ([189a71d](https://github.com/Ehesp/sqlitey/commit/189a71d9719120a33f4f38c190a2ed07c84a40d6))
+
 ## [0.5.0](https://github.com/Ehesp/sqlitey/compare/sqlitey-v0.4.0...sqlitey-v0.5.0) (2026-04-09)
 
 
