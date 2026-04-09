@@ -1,0 +1,74 @@
+@import "../styles/globals.css";
+
+@layer base {
+  :root {
+    @apply font-sans;
+  }
+
+  body {
+    @apply min-w-[320px] min-h-screen m-0 bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    background:
+      radial-gradient(circle at 10% 0%, oklch(0.26 0.03 240 / 0.45), transparent 40%),
+      radial-gradient(circle at 90% 10%, oklch(0.32 0.02 300 / 0.25), transparent 42%),
+      oklch(0.145 0 0);
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+}
+
+.sql-studio-shell {
+  @apply relative min-h-screen text-foreground;
+}
+
+.sql-studio-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.8;
+  background-image:
+    linear-gradient(to right, oklch(1 0 0 / 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(1 0 0 / 0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.panel-handle {
+  @apply relative w-1 bg-border/60 transition-colors;
+}
+
+.panel-handle:hover {
+  @apply bg-primary/35;
+}
+
+.panel-handle[data-resize-handle-state="drag"] {
+  @apply bg-primary/60;
+}
+
+.cm-editor {
+  @apply h-full text-sm;
+}
+
+.cm-scroller {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion) {
+  *,
+  ::before,
+  ::after {
+    animation: none !important;
+  }
+}
