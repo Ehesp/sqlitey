@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/Ehesp/sqlitey/compare/sqlitey-v0.2.0...sqlitey-v0.3.0) (2026-04-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **release:** Windows arm64 release artifact removed until libsql ships win32-arm64-msvc.
+
+### Bug Fixes
+
+* **release:** embed libsql native addons in bun compile binaries ([28e6fd5](https://github.com/Ehesp/sqlitey/commit/28e6fd58b09750242fe648a4e8c1cd8ade93e40c))
+
 ## [0.2.0](https://github.com/Ehesp/sqlitey/compare/sqlitey-v0.1.0...sqlitey-v0.2.0) (2026-04-09)
 
 
