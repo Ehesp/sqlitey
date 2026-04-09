@@ -1,6 +1,6 @@
 {
   "name": "sqlitey",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "sqlitey — local SQLite database UI (libSQL driver) with Bun",
   "private": true,
   "type": "module",
