@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import tailwindPlugin from "bun-plugin-tailwind";
 import { ensureLibsqlNativePackage } from "./ensure-libsql-native-package";
 import { libsqlPackageForBunTarget } from "./libsql-embed-packages";
 import { patchLibsqlToStaticRequire } from "./patch-libsql-static-require";
@@ -65,22 +66,29 @@ import "${libsqlPkg}";
 
     const unpatchLibsql = await patchLibsqlToStaticRequire(rootDir, libsqlPkg);
     try {
-      const buildProc = Bun.spawn(
-        [
-          "bun",
-          "build",
-          "src/index.ts",
-          "--compile",
-          `--target=${bunTarget}`,
-          "--outfile",
+      // `bunfig.toml` [serve.static] plugins apply to dev static serving only — not `bun build --compile`.
+      // Use the same Tailwind plugin as `build.ts` so the HTML/TSX graph is processed for standalone binaries.
+      const buildResult = await Bun.build({
+        entrypoints: [path.join(rootDir, "src/index.ts")],
+        root: rootDir,
+        plugins: [tailwindPlugin],
+        minify: true,
+        sourcemap: "linked",
+        env: "BUN_PUBLIC_*",
+        define: {
+          "process.env.NODE_ENV": JSON.stringify("production"),
+        },
+        compile: {
+          target: bunTarget as Bun.Build.CompileTarget,
           outfile,
-        ],
-        { cwd: rootDir, stdout: "inherit", stderr: "inherit" }
-      );
+        },
+      });
 
-      const buildExit = await buildProc.exited;
-      if (buildExit !== 0) {
-        throw new Error(`Build failed for ${platform} (target: ${bunTarget}) with exit code ${buildExit}`);
+      if (!buildResult.success) {
+        for (const log of buildResult.logs) {
+          console.error(log);
+        }
+        throw new Error(`Bun.build failed for ${platform} (target: ${bunTarget})`);
       }
 
       console.log("Built", platform);
